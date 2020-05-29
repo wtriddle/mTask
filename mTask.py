@@ -1,5 +1,10 @@
 from tkinter import *
 from tkinter import ttk
+from tkinter import messagebox as mBox
+
+from bwDB import bwDB
+from taskFunctions import TaskFunctions
+from routineFunctions import RoutineFunctions
 
 from threading import Thread
 from queue import Queue
@@ -9,41 +14,23 @@ class mTask():
 
     def __init__(self):
         
-        self.root = Tk()
-        self.root.title('mTask')
+        # Root, Database, and Menu Init -----------------------------------------------------------------------
+        self.root = Tk()                                                # Top level window
+        self.root.title('mTask')                                        # Assign a title
 
-        # Menu Control ---------------------------------------------------------
-        self.menubar = Menu(self.root)
-        self.root.config(menu = self.menubar)
+        self.initDB()                                                   # Initalize user database
 
-        self.taskMenu = Menu(self.menubar, tearoff = 0)
-        self.taskMenu.add_command(label = "New Task")
-        self.taskMenu.add_command(label = "Edit Task")
-        self.taskMenu.add_command(label = "Load Task")
-        self.taskMenu.add_command(label = "Save Task")
-        self.menubar.add_cascade(menu = self.taskMenu, label = "Tasks")
+        self.taskFunctions = TaskFunctions(self)                        # Initalize task menu functionality
+        self.routineFunctions = RoutineFunctions(self)                  # Initalize routine menu functionality
+        self.initMenu(self.taskFunctions, self.routineFunctions)        # Initialize menu with functionality
+        # ~ Root, Database, and Menu Init --------------------------------------------------------------------
 
-        self.routinesMenu = Menu(self.menubar, tearoff = 0)
-        self.routinesMenu.add_command(label = "New Rouine")
-        self.routinesMenu.add_command(label = "Edit Rouine")
-        self.routinesMenu.add_command(label = "Load Rouine")
-        self.routinesMenu.add_command(label = "Save Rouine")
-        self.routinesMenu.add_separator()
-        self.routinesMenu.add_command(label = "Add Task")
-        self.menubar.add_cascade(menu = self.routinesMenu, label = "Rouines")
+        # Tab Control Init -----------------------------------------------------------------------------------
+        self.tabControl = ttk.Notebook(self.root)                       # Top level notebook 
+        self.tabControl.pack(padx=10,pady=10)                           # Pack into GUI
 
-        # ~ Menu Control ---------------------------------------------------------
-
-        # Tab Control Init ------------------------------------------------------------
-        self.tabControl = ttk.Notebook(self.root)
-        self.tabControl.pack()
-
-        self.dict1 = [{'taskName':'Forearm Steching','taskTime':'12:00pm','routineName':'Tasks'},
-                        {'taskName':'Leg Steching','taskTime':'4:00pm','routineName':'Tasks'}]
-        self.addRoutineToGUI(tasks = self.dict1)
-        # ~ Tab Control ------------------------------------------------------------
-
-
+        self.addRoutineToGUI(routineName = "Tasks")                     # Default tab for tasks w/o specific routine
+        # ~ Tab Control --------------------------------------------------------------------------------------
     
     def addTaskToGUI(self, taskName, taskTime, routineName):
         '''
@@ -52,40 +39,57 @@ class mTask():
                 {'taskName':str(value),'taskTime' : str(value), 'routineName' : routineName}
         '''
         for i, tab in enumerate(self.tabControl.winfo_children()):
+
             tabTitle = str(self.tabControl.tab(i, option = "text"))
+            
             if tabTitle == routineName:
-                for child in tab.winfo_children():
-                    if child.cget("text") == "Incomple Tasks":
-                        numTasks = int(len(child.winfo_children()) / 3) # 3 widgets per task
-                        button = ttk.Button(child, text = "Complete " + taskName)
-                        button.grid(row = numTasks, column = 0 , padx = 15, pady = 15)
-                        button.bind("<Button-1>", self.completionOfTask)
-                        ttk.Label(child, text = str(taskTime)).grid(row = numTasks, column = 1 , padx = 15, pady = 15)
-                        ttk.Label(child, text = str(taskName)).grid(row = numTasks, column = 2 , padx = 15, pady = 15)
-                        break
-                break
-    
+                
+                # Widgets associtated with routine tab
+                toDoTaskFrame = tab.winfo_children()[0]
+                progressFrame = tab.winfo_children()[2]
+                progressBar = progressFrame.winfo_children()[0]
+
+                # Error if task is already inside of GUI
+                loadedTasks = []
+                for child in toDoTaskFrame.winfo_children():
+                    if child.winfo_class() == "TButton":
+                        loadedTasks.append(str(child.cget('text')[9:len(child.cget('text'))]))
+                if taskName in loadedTasks:
+                    mBox.showerror(title = "Task Insertion Error", message= "Please enter a task that is not loaded into the " + routineName + " tab")
+                    return 
+
+                # Update the toDoTaskFrame
+                numTasks = int(len(toDoTaskFrame.winfo_children()) / 3) # 3 widgets per task
+                button = ttk.Button(toDoTaskFrame, text = "Complete " + taskName)
+                button.grid(row = numTasks, column = 0 , padx = 15, pady = 15)
+                button.bind("<Button-1>", self.completionOfTask)
+                ttk.Label(toDoTaskFrame, text = str(taskTime)).grid(row = numTasks, column = 1 , padx = 15, pady = 15)
+                ttk.Label(toDoTaskFrame, text = str(taskName)).grid(row = numTasks, column = 2 , padx = 15, pady = 15)
+                
+                # Increment maximum on progressbar 
+                currentMax = progressBar.cget("maximum") + 0.0
+                progressBar.configure(maximum = currentMax + 1.0)
+
     def addRoutineToGUI(self, tasks =  [], routineName = ""):
         '''
-            Adds new tab to root window with all task objects, 
-            whose values are specified in tasks parameter
-            tasks is list of dictionaries with following form:
-                {'taskName':str(value),'taskTime' : str(value), 'routineName' : routineName}
-            All routineName entries must be identical in tasks. 
-            tasks may be empty to create a new empty tab as well.
+            Adds new tab to root window with label frames and a progress bar.
+            If the optional tasks list argument is specified, the function will:
+                automatically paste tasks to the in-complete frame,
+                and configure the progress bar
         '''
-        
+
         self.routineTab = ttk.Frame(self.tabControl)
-        if len(tasks) > 0:
-            routineName = tasks[0]['routineName']
         self.tabControl.add(self.routineTab, text = routineName)
 
         self.toDoTaskFrame = LabelFrame(self.routineTab, text = "Incomple Tasks", width = 100, height = 100)
         self.completedTaskFrame = LabelFrame(self.routineTab, text = "Completed Tasks")
-        self.progressBar = ttk.Progressbar(self.routineTab, mode = "determinate", maximum = 2.0)
+        self.progressFrame = LabelFrame(self.routineTab, text = "Progress")
+        self.progressBar = ttk.Progressbar(self.progressFrame, mode = "determinate", maximum = 0.0)
+
         self.toDoTaskFrame.pack(fill = "both", expand = True, padx = 10, pady = 10)
         self.completedTaskFrame.pack(fill = "both", expand = True, padx = 10, pady = 10)
-        self.progressBar.pack(fill = "both", expand = True)
+        self.progressFrame.pack(fill = "both", expand = True, padx = 10, pady = 10)
+        self.progressBar.pack(fill = "both", expand = True, padx = 10, pady = 10)
 
         ttk.Label(self.toDoTaskFrame, text = "Complete Task").grid(row = 0, column = 0 , padx = 15, pady = 15)
         ttk.Label(self.toDoTaskFrame, text = "Time").grid(row = 0, column = 1 , padx = 15, pady = 15)
@@ -110,9 +114,10 @@ class mTask():
         # Widgets 
         button = event.widget
         toDoTaskFrame = button.master
-        routineFrame = toDoTaskFrame.master
-        completedFrame = routineFrame.winfo_children()[1]
-        progressBar = routineFrame.winfo_children()[2]
+        tab = toDoTaskFrame.master
+        completedFrame = tab.winfo_children()[1]
+        progressFrame = tab.winfo_children()[2]
+        progressBar = progressFrame.winfo_children()[0]
 
         # Update the in-completed task frame
         completedRow = button.grid_info()['row']
@@ -149,9 +154,50 @@ class mTask():
             time.sleep(0.01)
             i+=1
 
+    def initDB(self):
 
+        self.mTaskDB = bwDB(filename = "mTaskDB.db")
 
-        
+        self.mTaskDB.sql_do('''
+            CREATE TABLE IF NOT EXISTS Tasks(
+                taskName TEXT PRIMARY KEY,
+                taskTime TEXT,
+                Routine_id INTEGER
+            );
+        ''')
+
+        self.mTaskDB.sql_do('''
+            CREATE TABLE IF NOT EXISTS Routines(
+                Routine_id INTEGER PRIMARY KEY,
+                routineName TEXT,
+                routineDescription TEXT
+            );
+        ''')
+
+        self.mTaskDB.set_table(tablename = "Routines")
+        if not list(self.mTaskDB.getrecs()):
+            self.mTaskDB.sql_do('''
+                        INSERT INTO Routines
+                        VALUES (0, 'Tasks', 'DEFAULT')
+            ''')
+
+    def initMenu(self, taskFunctions, routineFunctions):
+        self.menubar = Menu(self.root)
+        self.root.config(menu = self.menubar)
+
+        self.taskMenu = Menu(self.menubar, tearoff = 0)
+        self.taskMenu.add_command(label = "New Task", command = taskFunctions.newTask)
+        self.taskMenu.add_command(label = "Edit Task", command = taskFunctions.editTask)
+        self.taskMenu.add_command(label = "Load Task", command = taskFunctions.loadTask)
+        self.menubar.add_cascade(menu = self.taskMenu, label = "Tasks")
+
+        self.routinesMenu = Menu(self.menubar, tearoff = 0)
+        self.routinesMenu.add_command(label = "New Rouine", command = routineFunctions.newRoutine)
+        self.routinesMenu.add_command(label = "Edit Rouine", command = routineFunctions.editRoutine)
+        self.routinesMenu.add_command(label = "Load Rouine", command = routineFunctions.loadRoutine)
+        self.routinesMenu.add_separator()
+        self.routinesMenu.add_command(label = "Add Task", command = routineFunctions.addTask)
+        self.menubar.add_cascade(menu = self.routinesMenu, label = "Rouines")
 
 
         
