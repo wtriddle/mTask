@@ -7,7 +7,6 @@ class TaskFunctions():
         self.mTask = mTask
         
     def newTask(self):
-
         window = Toplevel(self.mTask.root)
         containerFrame = ttk.Frame(window)
         containerFrame.pack(expand = True, fill = "both", padx = 50, pady = 50)
@@ -30,26 +29,17 @@ class TaskFunctions():
         if not taskName:
             mBox.showerror(title = "Task Creation Error", message= "Please enter a task name")
             return 
-        self.mTask.mTaskDB.set_table(tablename = "Tasks")
-        recs = self.mTask.mTaskDB.getrecs()
-        if recs:
-            for rec in recs:
-                if taskName == rec['taskName']:
-                    mBox.showerror(title = "Task Creation Error", message= "Please enter a unqiue task name")
-                    return 
-        self.mTask.addTaskToGUI(**{'taskName': taskName, 'taskTime' : taskTime, 'routineName' : "Tasks"})
-        self.mTask.mTaskDB.insert({'taskName': taskName, 'taskTime' : taskTime, 'Routine_id' : 0}) 
+        userTasks = self.mTask.loadUserTasks()
+        if taskName in userTasks:
+            mBox.showerror(title = "Task Creation Error", message= "Please enter a unqiue task name")
+            return 
+        newTask = {'taskName': taskName, 'taskTime' : taskTime, 'routineName' : "Tasks"}
+        self.mTask.addTaskToGUI(**newTask)
+        self.mTask.mTaskDB.insert(newTask) 
 
     def loadTask(self):
-        # Load userTasks from database
-        self.mTask.mTaskDB.set_table(tablename = "Tasks")
-        recs = list(self.mTask.mTaskDB.getrecs())
-        userTasks = [rec['taskName'] for rec in recs]
-
-        # Load userRoutines from database
-        self.mTask.mTaskDB.set_table(tablename = "Routines")
-        recs = list(self.mTask.mTaskDB.getrecs())
-        userRoutines = [rec['routineName'] for rec in recs]
+        userTasks = self.mTask.loadUserTasks()
+        userRoutines = self.mTask.loadUserRoutines()
 
         # Form Window ------------------------------------------------------
         window = Toplevel(self.mTask.root)
@@ -71,7 +61,6 @@ class TaskFunctions():
         self.submitButton = ttk.Button(containerFrame, text = "Load", command = self.submitLoadTaskData)
         self.submitButton.grid(row = 4, column = 0, pady = 20, sticky = NSEW)
         # ~ Form Window ------------------------------------------------------
-
     def submitLoadTaskData(self):
         taskName = str(self.taskEntry.get())
         routineName = str(self.routineEntry.get())
@@ -79,11 +68,10 @@ class TaskFunctions():
         rec = dict(self.mTask.mTaskDB.sql_query_row(query))
         taskTime = rec['taskTime']
         self.mTask.addTaskToGUI(**{'taskName': taskName, 'taskTime' : taskTime, 'routineName' : routineName})
+
     def editTask(self):
         # Load userTasks from database
-        self.mTask.mTaskDB.set_table(tablename = "Tasks")
-        recs = list(self.mTask.mTaskDB.getrecs())
-        userTasks = [rec['taskName'] for rec in recs]
+        userTasks = self.mTask.loadUserTasks()
 
         # Form Window ------------------------------------------------------
         window = Toplevel(self.mTask.root)

@@ -162,24 +162,9 @@ class mTask():
             CREATE TABLE IF NOT EXISTS Tasks(
                 taskName TEXT PRIMARY KEY,
                 taskTime TEXT,
-                Routine_id INTEGER
+                routineName TEXT
             );
         ''')
-
-        self.mTaskDB.sql_do('''
-            CREATE TABLE IF NOT EXISTS Routines(
-                Routine_id INTEGER PRIMARY KEY,
-                routineName TEXT,
-                routineDescription TEXT
-            );
-        ''')
-
-        self.mTaskDB.set_table(tablename = "Routines")
-        if not list(self.mTaskDB.getrecs()):
-            self.mTaskDB.sql_do('''
-                        INSERT INTO Routines
-                        VALUES (0, 'Tasks', 'DEFAULT')
-            ''')
 
     def initMenu(self, taskFunctions, routineFunctions):
         self.menubar = Menu(self.root)
@@ -199,7 +184,22 @@ class mTask():
         self.routinesMenu.add_command(label = "Add Task", command = routineFunctions.addTask)
         self.menubar.add_cascade(menu = self.routinesMenu, label = "Rouines")
 
-
+    def loadUserTasks(self):
+        self.mTaskDB.set_table(tablename = "Tasks")
+        recs = list(self.mTaskDB.getrecs())
+        userTasks = []
+        if recs:
+            userTasks = [rec['taskName'] for rec in recs]
+        return userTasks
+    
+    def loadUserRoutines(self):
+        self.mTaskDB.set_table(tablename = "Tasks")
+        recs = list(self.mTaskDB.getrecs())
+        userRoutines = []
+        if recs:
+            userRoutines = [rec['routineName'] for rec in recs]
+            userRoutines = list(dict.fromkeys(userRoutines))
+        return userRoutines
         
 # mTask object
 mtask = mTask()
