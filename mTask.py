@@ -166,6 +166,8 @@ class mTask():
             );
         ''')
 
+        self.mTaskDB.set_table("Tasks")
+
     def initMenu(self, taskFunctions, routineFunctions):
         self.menubar = Menu(self.root)
         self.root.config(menu = self.menubar)
@@ -180,8 +182,6 @@ class mTask():
         self.routinesMenu.add_command(label = "New Rouine", command = routineFunctions.newRoutine)
         self.routinesMenu.add_command(label = "Edit Rouine", command = routineFunctions.editRoutine)
         self.routinesMenu.add_command(label = "Load Rouine", command = routineFunctions.loadRoutine)
-        self.routinesMenu.add_separator()
-        self.routinesMenu.add_command(label = "Add Task", command = routineFunctions.addTask)
         self.menubar.add_cascade(menu = self.routinesMenu, label = "Rouines")
 
     def loadUserTasks(self):
