@@ -17,6 +17,7 @@ class mTask():
         # Root, Database, and Menu Init -----------------------------------------------------------------------
         self.root = Tk()                                                # Top level window
         self.root.title('mTask')                                        # Assign a title
+        self.root.geometry("640x480+10+15")
 
         self.initDB()                                                   # Initalize user database
 
@@ -31,6 +32,11 @@ class mTask():
 
         self.addRoutineToGUI(routineName = "Tasks")                     # Default tab for tasks w/o specific routine
         # ~ Tab Control --------------------------------------------------------------------------------------
+
+        # Styles ---------------------------------------------------------------------------------------------
+        # self.style = ttk.Style(self.root)
+        # self.style.configure("TButton", background = "yellow", foreground = "green")
+        # ~ Styles ---------------------------------------------------------------------------------------------
     
     def addTaskToGUI(self, taskName, taskTime, routineName):
         '''
@@ -88,7 +94,7 @@ class mTask():
 
         self.toDoTaskFrame.pack(fill = "both", expand = True, padx = 10, pady = 10)
         self.completedTaskFrame.pack(fill = "both", expand = True, padx = 10, pady = 10)
-        self.progressFrame.pack(fill = "both", expand = True, padx = 10, pady = 10)
+        self.progressFrame.pack(fill = "both", padx = 10, pady = 10)
         self.progressBar.pack(fill = "both", expand = True, padx = 10, pady = 10)
 
         ttk.Label(self.toDoTaskFrame, text = "Complete Task").grid(row = 0, column = 0 , padx = 15, pady = 15)
@@ -103,6 +109,7 @@ class mTask():
         
         ttk.Label(self.completedTaskFrame, text = "Completed Tasks").grid(row = 0, column = 0 , padx = 15, pady = 15)
         ttk.Label(self.completedTaskFrame, text = "Completion Time").grid(row = 0, column = 1 , padx = 15, pady = 15)
+        self.tabControl.select(self.routineTab)
 
     def completionOfTask(self, event):
         '''
@@ -160,13 +167,25 @@ class mTask():
 
         self.mTaskDB.sql_do('''
             CREATE TABLE IF NOT EXISTS Tasks(
-                taskName TEXT PRIMARY KEY,
+                id INTEGER PRIMARY KEY,
+                taskName TEXT,
                 taskTime TEXT,
-                routineName TEXT
+                taskDescription TEXT,
+                routineName TEXT DEFAULT \"Tasks\" NOT NULL,
+                CONSTRAINT task_info UNIQUE(taskName, routineName)
             );
         ''')
 
-        self.mTaskDB.set_table("Tasks")
+        self.mTaskDB.sql_do('''
+            CREATE TABLE IF NOT EXISTS Routines(
+                routineName TEXT PRIMARY KEY,
+                routineDescription TEXT
+            );
+        ''')
+        self.mTaskDB.set_table("Routines")
+        if self.mTaskDB.countrecs() == 0:
+            query = f'INSERT INTO Routines VALUES (\"Tasks\", \"DEFAULT\")'
+            self.mTaskDB.sql_do(query)
 
     def initMenu(self, taskFunctions, routineFunctions):
         self.menubar = Menu(self.root)
@@ -190,10 +209,11 @@ class mTask():
         userTasks = []
         if recs:
             userTasks = [rec['taskName'] for rec in recs]
+            userTasks = list(dict.fromkeys(userTasks))
         return userTasks
     
     def loadUserRoutines(self):
-        self.mTaskDB.set_table(tablename = "Tasks")
+        self.mTaskDB.set_table(tablename = "Routines")
         recs = list(self.mTaskDB.getrecs())
         userRoutines = []
         if recs:

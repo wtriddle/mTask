@@ -29,12 +29,16 @@ class RoutineFunctions():
 
         self.addTaskButton = ttk.Button(container, text = "Add task to Routine", command = self.addTaskToRoutineGUI)
         self.addTaskButton.grid(row = 4, column = 0, padx = 10, pady = 10)
+
+        ttk.Label(container, text = "Describe the Routine").grid(row = 6, column = 0, padx = 10, pady = 10)
+
+        self.descriptionEntry = Text(container, wrap = WORD, width = 30, height = 10)
+        self.descriptionEntry.grid(row = 7, column = 0, padx = 10, pady = 10)
         
         self.submitButton = ttk.Button(container, text = "Create Routine", command = self.submitNewRoutine)
-        self.submitButton.grid(row = 6, column = 0, padx = 10, pady =10, sticky = NSEW)
+        self.submitButton.grid(row = 8, column = 0, padx = 10, pady =10, sticky = NSEW)
 
         self.routineEntry.bind("<KeyRelease>", self.updateRoutineAddGUI)
-
     def addTaskToRoutineGUI(self):
         '''
             Adds task labels into the rouineTasksFrame
@@ -59,6 +63,7 @@ class RoutineFunctions():
         '''
 
         routineName = self.routineName.get()
+        routineDescription = self.descriptionEntry.get("1.0", END)
         userRoutines = self.mTask.loadUserRoutines()
 
         if routineName in userRoutines:
@@ -66,25 +71,18 @@ class RoutineFunctions():
             return 
 
         loadedTasks = [task.cget('text') for task in self.routineTasksFrame.winfo_children()]
-        for taskName in loadedTasks:
-            query = f'SELECT routineName FROM Tasks WHERE taskName = \"{taskName}\"'
-            exsistingRoutineName = dict(self.mTask.mTaskDB.sql_query_row(query))['routineName']
-            if exsistingRoutineName != "Tasks":
-                accept = mBox.askyesno(title = "Routine Creation Decision",
-                message = ("""One or more tasks in the routine list already have an associtated routine
-Would you like to overwrite this task into the new routine?"""))
-                if accept:
-                    break
-                else:
-                    return
-
         tasksToAdd = []
         for taskName in loadedTasks:
-            query = f'UPDATE Tasks SET routineName = \"{routineName}\" WHERE taskName = \"{taskName}\"'
+            query = f'SELECT * FROM Tasks WHERE taskName = \"{taskName}\" AND routineName = \"Tasks\"'
+            rec = dict(self.mTask.mTaskDB.sql_query_row(query))
+            taskName = rec['taskName']
+            taskTime = rec['taskTime']
+            taskDescription = rec['taskDescription']
+            query = f'INSERT INTO Tasks (taskName, taskTime, taskDescription, routineName) VALUES (\"{taskName}\",\"{taskTime}\", \"{taskDescription}\", \"{routineName}\")' 
             self.mTask.mTaskDB.sql_do(query)
-            query = f'SELECT * FROM Tasks WHERE taskName = \"{taskName}\"'
-            task = dict(self.mTask.mTaskDB.sql_query_row(query))
-            tasksToAdd.append(task)
+            query = f'INSERT INTO Routines VALUES (\"{routineName}\",\"{routineDescription}\")'
+            self.mTask.mTaskDB.sql_do(query)
+            tasksToAdd.append({'taskName': taskName, 'taskTime' : taskTime, 'routineName' : routineName})
 
         self.mTask.addRoutineToGUI(tasks = tasksToAdd, routineName=routineName)
 
@@ -104,14 +102,18 @@ Would you like to overwrite this task into the new routine?"""))
         self.submitButton.grid(row = 2, column = 0, padx = 10, pady = 10)
     def submitLoadRoutine(self):
         routineName = self.routineEntry.get()
+        if not routineName:
+            mBox.showerror(title="Load Routine Error", message="Please select a routine to load")
+            return
         query = f'SELECT * FROM Tasks WHERE routineName = \"{routineName}\"'
-        recs = self.mTask.mTaskDB.sql_query(query)
-        tasksToAdd = [dict(rec) for rec in recs]
+        recs = list(self.mTask.mTaskDB.sql_query(query))
+        tasksToAdd = []
+        for rec in recs:
+            tasksToAdd.append({'taskName': rec['taskName'], 'taskTime' : rec['taskTime'], 'routineName' : routineName})
         self.mTask.addRoutineToGUI(tasks=tasksToAdd, routineName= routineName)
     
     def editRoutine(self):
         userRoutines = self.mTask.loadUserRoutines()
-        userTasks = self.mTask.loadUserTasks()
         
         window = Toplevel(self.mTask.root)
         container = ttk.Frame(window)
@@ -132,7 +134,7 @@ Would you like to overwrite this task into the new routine?"""))
 
         ttk.Label(container, text = "Select a Task Name to Remove").grid(row = 4, column = 1, padx = 10, pady = 10)
 
-        self.taskToAdd = ttk.Combobox(container, values = userTasks, state = "readonly")
+        self.taskToAdd = ttk.Combobox(container, state = "readonly")
         self.taskToAdd.grid(row = 5 , column = 0, padx = 10)
 
         self.taskToRemove = ttk.Combobox(container, state = "readonly")
@@ -150,37 +152,48 @@ Would you like to overwrite this task into the new routine?"""))
         self.submitTaskToRemove = ttk.Button(container, text = "Add Task", command = self.addTaskToRemoveFrame)
         self.submitTaskToRemove.grid(row = 6, column = 1, padx = 10, pady = 5)
 
-        self.clearButton = ttk.Button(container, text = "Clear", command = self.clearEditRoutine)
-        self.clearButton.grid(row = 8, column = 0, columnspan = 2, pady = 20)
+        ttk.Label(container, text = "Edit the Routine Description").grid(row = 8, column = 0, columnspan = 2, padx = 10, pady = 10)
+
+        self.newDescriptionEntry = Text(container, wrap = WORD, width = 30, height = 10)
+        self.newDescriptionEntry.grid(row = 9, column = 0, columnspan = 2, pady = 5, padx = 10)
+
+        self.clearButton = ttk.Button(container, text = "Clear Tasks", command = self.clearEditRoutine)
+        self.clearButton.grid(row = 10, column = 0, columnspan = 2, pady = 20)
 
         self.submitButton = ttk.Button(container, text = "Edit", command = self.submitEditRoutine)
-        self.submitButton.grid(row = 9, column = 0, columnspan = 2, pady = 20)
+        self.submitButton.grid(row = 11, column = 0, columnspan = 2, pady = 20)
     def fillEntries(self, event):
         routineName = self.routineEntry.get()
+        userTasks = self.mTask.loadUserTasks()
         if routineName == "Tasks":
             self.taskToRemove.config(values = [])
             return
         query = f'SELECT * FROM Tasks WHERE routineName = \"{routineName}\"'
         recs = list(self.mTask.mTaskDB.sql_query(query))
-        loadedTasks = []
+        queuedTasks = []
         if recs:
-            loadedTasks = [rec['taskName'] for rec in recs]
-        self.taskToRemove.config(values = loadedTasks)
+            queuedTasks = [rec['taskName'] for rec in recs]
+        self.taskToRemove.config(values = queuedTasks)
+        for task in queuedTasks:
+            userTasks.remove(task)
+        self.taskToAdd.config(values = userTasks)
+        query = f'SELECT * FROM Routines WHERE routineName = \"{routineName}\"'
+        rec = dict(self.mTask.mTaskDB.sql_query_row(query))
         self.newRoutineEntry.delete(0, END)
         self.newRoutineEntry.insert(0, routineName)
+        self.newDescriptionEntry.delete("1.0", END)
+        self.newDescriptionEntry.insert("1.0", rec['routineDescription'])
     def addTaskToRemoveFrame(self):
         taskName = self.taskToRemove.get()
-        loadedAddTasks = [task.cget('text') for task in self.taskToAddFrame.winfo_children()]
         loadedRemoveTasks = [task.cget('text') for task in self.taskToRemoveFrame.winfo_children()]
-        if taskName in loadedAddTasks or taskName in loadedRemoveTasks:
+        if taskName in loadedRemoveTasks:
             mBox.showerror(title = "Task Addition Error", message= "Please choose a task that is not in the list")
             return  
         ttk.Label(self.taskToRemoveFrame, text = taskName).grid(row = len(self.taskToRemoveFrame.winfo_children()), column = 0, sticky = W)
     def addTaskToAddFrame(self):
         taskName = self.taskToAdd.get()
         loadedAddTasks = [task.cget('text') for task in self.taskToAddFrame.winfo_children()]
-        loadedRemoveTasks = [task.cget('text') for task in self.taskToRemoveFrame.winfo_children()]
-        if taskName in loadedAddTasks or taskName in loadedRemoveTasks:
+        if taskName in loadedAddTasks:
             mBox.showerror(title = "Task Addition Error", message= "Please choose a task that is not in the list")
             return 
         ttk.Label(self.taskToAddFrame, text = taskName).grid(row = len(self.taskToAddFrame.winfo_children()), column = 0, sticky = W)
@@ -190,12 +203,20 @@ Would you like to overwrite this task into the new routine?"""))
         for child in self.taskToRemoveFrame.winfo_children():
             child.destroy()
     def submitEditRoutine(self):
-
+        
         oldRoutineName = self.routineEntry.get()
         newRoutineName = self.newRoutineEntry.get()
+        routineDescription = self.newDescriptionEntry.get("1.0", END)
+        
+        query = f'UPDATE Routines SET routineDescription = \"{routineDescription}\" WHERE routineName = \"{oldRoutineName}\"'
+        self.mTask.mTaskDB.sql_do(query)
+
         if oldRoutineName != newRoutineName:
             query = f'UPDATE Tasks SET routineName = \"{newRoutineName}\" WHERE routineName = \"{oldRoutineName}\"'
             self.mTask.mTaskDB.sql_do(query)
+            query = f'UPDATE Routines SET routineName = \"{newRoutineName}\" WHERE routineName = \"{oldRoutineName}\"'
+            self.mTask.mTaskDB.sql_do(query)
+        
         tasksToAdd = [task.cget("text") for task in self.taskToAddFrame.winfo_children()]
         tasksToRemove = [task.cget("text") for task in self.taskToRemoveFrame.winfo_children()]
         
