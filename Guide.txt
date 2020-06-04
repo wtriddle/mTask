@@ -1,0 +1,9 @@
+Tasks:
+Every task has a default routine container called Tasks. The Tasks container contains all tasks ever created by the user. Selecting the Tasks container when editing a task
+will edit the default settings for the task. These properties are carried over initially into every new routine created, but can be altered to tailor specifically to that 
+routine.
+
+Routines:
+Each routine has a set of tasks which are unique to itself. It cannot have the same task more than once, but multiple routines can access the same task. 
+When a task is added to a routine, it will carry over the same task time and description from its default properties, specified in the Tasks container. However, when a task
+is added to a new routine, then the task can be specifically altered under the routine to have a unique description and time for that routine. 

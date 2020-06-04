@@ -11,6 +11,7 @@ import descriptor
 from threading import Thread
 from queue import Queue
 import time
+import datetime
 
 class mTask():
     '''
@@ -40,6 +41,7 @@ class mTask():
         # Tab Control Init -----------------------------------------------------------------------------------
         self.tabControl = ttk.Notebook(self.root)                       # Top level notebook 
         self.tabControl.pack(padx=10,pady=10)                           # Pack into GUI
+        self.initTabs()                                                 # Initialize the GUI with recurring tasks/routines
         # ~ Tab Control --------------------------------------------------------------------------------------
 
         # Styles ---------------------------------------------------------------------------------------------
@@ -52,16 +54,6 @@ class mTask():
         self.style.configure("TEntry", font = 8)
         # ~ Styles -------------------------------------------------------------------------------------------
 
-        # Daily Task loading
-        self.dailyTasks = []
-        query = f'SELECT * FROM Tasks WHERE taskName = \"6PP\" AND routineName = \"Tasks\"'
-        rec = dict(self.mTaskDB.sql_query_row(query))
-        self.dailyTasks.append({'taskName': rec['taskName'], 'taskTime' : rec['taskTime'], 'routineName' : "Tasks"})
-        query = f'SELECT * FROM Tasks WHERE taskName = \"Daily Flexibility\" AND routineName = \"Tasks\"'
-        rec = dict(self.mTaskDB.sql_query_row(query))
-        self.dailyTasks.append({'taskName': rec['taskName'], 'taskTime' : rec['taskTime'], 'routineName' : "Tasks"})
-        self.addRoutineToGUI(routineName = "Tasks", tasks=self.dailyTasks)       # Default tab for tasks w/o specific routine
-    
     def addTaskToGUI(self, taskName, taskTime, routineName):
         '''
             Appends a taskName and taskTime as labels to the specified routineName tab inside the Incomplete Tasks frame.
@@ -212,6 +204,8 @@ class mTask():
                 taskTime TEXT,
                 taskDescription TEXT,
                 routineName TEXT DEFAULT \"Tasks\" NOT NULL,
+                recurFrequency INTEGER DEFAULT NULL,
+                recurRefDate TEXT DEFAULT NULL,
                 CONSTRAINT task_info UNIQUE(taskName, routineName)
             );
         ''')
@@ -219,12 +213,14 @@ class mTask():
         self.mTaskDB.sql_do('''
             CREATE TABLE IF NOT EXISTS Routines(
                 routineName TEXT PRIMARY KEY,
-                routineDescription TEXT
+                routineDescription TEXT,
+                recurFrequency INTEGER DEFAULT NULL,
+                recurRefDate TEXT DEFAULT NULL
             );
         ''')
         self.mTaskDB.set_table("Routines")
         if self.mTaskDB.countrecs() == 0:
-            query = f'INSERT INTO Routines VALUES (\"Tasks\", \"DEFAULT\")'
+            query = f'INSERT INTO Routines (routineName, routineDescription) VALUES (\"Tasks\", \"DEFAULT\")'
             self.mTaskDB.sql_do(query)
 
     def initMenu(self, taskFunctions, routineFunctions, helpFunctions):
@@ -246,13 +242,15 @@ class mTask():
         self.routinesMenu.add_command(label = "New Rouine", command = routineFunctions.newRoutine)
         self.routinesMenu.add_command(label = "Edit Rouine", command = routineFunctions.editRoutine)
         self.routinesMenu.add_command(label = "Load Rouine", command = routineFunctions.loadRoutine)
+        self.routinesMenu.add_separator()
+        self.routinesMenu.add_command(label = "Configure Recurring Routine", command = routineFunctions.configRecurringRoutine)
         self.menubar.add_cascade(menu = self.routinesMenu, label = "Rouines")
 
         self.helpMenu = Menu(self.menubar, tearoff = 0)
         self.helpMenu.add_command(label = "Guide", command = helpFunctions.showGuide)
         self.helpMenu.add_command(label = "Info", command = helpFunctions.showInfo)
         self.menubar.add_cascade(menu = self.helpMenu, label = "Help")
-        
+
     def loadUserTasks(self, routineName = "All"):
         '''
             Returns a list of all user tasks inside of the Tasks table associated with the input routineName
@@ -286,7 +284,66 @@ class mTask():
             userRoutines = [rec['routineName'] for rec in recs]
             userRoutines = list(dict.fromkeys(userRoutines))
         return userRoutines
+    
+    def initTabs(self):
+        '''
+            Initalizes the tabs based on recurrant properties of tasks and routines set by the user
+        '''
+
+        # Tasks Tab Init ---------------------------------------------
+        recurringTasks = []
+        self.mTaskDB.set_table("Tasks")
+        recs = self.mTaskDB.getrecs()
+        for rec in recs:
+            if rec['recurRefDate']:
+                recurringTasks.append(rec)
         
+        if recurringTasks:
+            todaysTasks = self.recurantAlgorithm(recurringTasks)
+            tasksToAdd = []
+            for task in todaysTasks:
+                tasksToAdd.append({'taskName': task['taskName'], 'taskTime' : task['taskTime'], 'routineName' : "Tasks"})
+            self.addRoutineToGUI(routineName= "Tasks", tasks=tasksToAdd)
+        else:
+            self.addRoutineToGUI(routineName= "Tasks")
+        # ~ Tasks Tab Init ---------------------------------------------
+
+        # Routine Tab Init --------------------------------------------
+        recurringRoutines = []
+        self.mTaskDB.set_table("Routines")
+        recs = self.mTaskDB.getrecs()
+        for rec in recs:
+            if rec['recurRefDate']:
+                recurringRoutines.append(rec)
+        
+        if recurringRoutines:
+            todaysRoutines = self.recurantAlgorithm(recurringRoutines)
+            for routine in todaysRoutines:
+                routineTasks = []
+                routineName = routine['routineName']
+                query = f'SELECT * FROM Tasks WHERE routineName = \"{routineName}\"'
+                tasks = list(self.mTaskDB.sql_query(query))
+                for task in tasks:
+                    routineTasks.append({'taskName': task['taskName'], 'taskTime' : task['taskTime'], 'routineName' : routineName})
+                self.addRoutineToGUI(routineName=routineName, tasks=routineTasks)
+        # ~ Routine Tab Init ------------------------------------------
+    def recurantAlgorithm(self, R):
+        '''
+            Determines what routines or tasks should be automatically loaded into the GUI based on the recurring property configuration
+            Works for both routines and tasks
+        '''
+        loadedToday = []
+        today = datetime.datetime.today().date()
+        for rec in R:
+            frequency = int(rec['recurFrequency'])
+            refDate = rec['recurRefDate'].split("-")
+            refInfo = {'year':int(refDate[0]), 'month' : int(refDate[1]), 'day' : int(refDate[2])}
+            refDate = datetime.date(**refInfo)
+            daysSinceCreation = today - refDate
+            if daysSinceCreation.days % frequency == 0:
+                loadedToday.append(rec)
+        return loadedToday
+            
 # mTask object
 mtask = mTask()
 

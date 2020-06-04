@@ -1,6 +1,7 @@
 from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox as mBox
+from datetime import datetime
 
 class TaskFunctions():
     '''
@@ -11,7 +12,7 @@ class TaskFunctions():
         
     def newTask(self):
         '''
-            Form for new task
+            Form for new task creation
         '''
         window = Toplevel(self.mTask.root)
         window.geometry("270x380-2450+250")
@@ -63,7 +64,7 @@ class TaskFunctions():
 
     def loadTask(self):
         '''
-            Loads a task from the database, only for routines that have already been loaded previously
+            Loads a task from the database, only from routines that are currently loaded into the GUI
         '''
         userTasks = self.mTask.loadUserTasks()
         userRoutines = [str(self.mTask.tabControl.tab(i, option = "text")) for i in range(len(self.mTask.tabControl.winfo_children()))]
@@ -96,6 +97,8 @@ class TaskFunctions():
         '''
         taskName = str(self.taskEntry.get())
         routineName = str(self.routineEntry.get())
+        if not taskName or not routineName:
+            mBox.showerror(title="Task Load Error", message="Please select a routine or a task to load from")
 
         query = f'SELECT * FROM Tasks WHERE taskName = \"{taskName}\" AND routineName = \"{routineName}\"'
         rec = dict(self.mTask.mTaskDB.sql_query_row(query))
@@ -118,15 +121,14 @@ class TaskFunctions():
         ttk.Label(containerFrame, text = "Choose a Task to Change").grid(row = 0, column = 0, pady = 10, padx = 10)
 
         self.taskEntry = ttk.Combobox(containerFrame, state = "readonly")
-        self.taskEntry.bind("<<ComboboxSelected>>", self.setUpEntries)
+        self.taskEntry.bind("<<ComboboxSelected>>", self.fillRoutinesBox)
         self.taskEntry.config(values = userTasks)
         self.taskEntry.grid(row = 1, column = 0, padx = 10, pady = 10)
 
         ttk.Label(containerFrame, text = "Choose the routine to alter it from").grid(row = 2, column = 0, pady = 10, padx = 10)
 
         self.routineEntry = ttk.Combobox(containerFrame, state = "disabled")
-        self.routineEntry.bind("<<ComboboxSelected>>", self.fillEntries)
-        self.routineEntry.config()
+        self.routineEntry.bind("<<ComboboxSelected>>", self.fillPropertyEntries)
         self.routineEntry.grid(row = 3, column = 0, padx = 10, pady = 10)
 
         ttk.Label(containerFrame, text = "Enter a new Task Name").grid(row = 4, column = 0, pady = 10, padx = 10)
@@ -147,9 +149,9 @@ class TaskFunctions():
         self.submitButton = ttk.Button(containerFrame, text = "Edit", command = self.submitEditTaskData)
         self.submitButton.grid(row = 10, column = 0, pady = 20, padx = 10, sticky = NSEW)
         # ~ Form Window ------------------------------------------------------
-    def setUpEntries(self, event):
+    def fillRoutinesBox(self, event):
         '''
-            Updates the routine selection to show only the routines for which the task is apart of
+            Updates the routine Combobox selection to show only the routines from which the task is apart of
         '''
         taskName = str(self.taskEntry.get())
 
@@ -158,9 +160,9 @@ class TaskFunctions():
         userRoutines = [rec['routineName'] for rec in recs]
 
         self.routineEntry.config(values = userRoutines, state = "readonly")
-    def fillEntries(self,event):
+    def fillPropertyEntries(self,event):
         '''
-            Fills the editing fields with the current data from the database for interactive UI experinece.
+            Fills the editing fields with the current data from the database about the selected task-routine pair
         '''
         taskName = str(self.taskEntry.get())
         routineName = str(self.routineEntry.get())
@@ -181,7 +183,7 @@ class TaskFunctions():
         self.newDescriptionEntry.insert("1.0",rec['taskDescription'])
     def submitEditTaskData(self):
         ''' 
-            Evaluted edited data, then submits it to the database. Task is NOT updated in GUI after this method.
+            Evaluted edited task-routine data, then submits it to the database. Task is NOT updated in GUI after this method.
         '''
         taskName = self.taskEntry.get()
         routineName = str(self.routineEntry.get())
@@ -218,16 +220,60 @@ class TaskFunctions():
 
         ttk.Label(container, text = "This task shall occur: ").grid(row = 2, column = 0, padx = 10, pady = 10)
 
-        recurringDays = [("Every " + str(x) + " days ") for x in range(2,7)]
-        recurringDays.insert(0, "Every other day")
-        recurringDays.insert(0, "Daily")
+        self.reccuringDays = [("Every " + str(x) + " days ") for x in range(2,7)]
+        self.reccuringDays.insert(0, "Every other day")
+        self.reccuringDays.insert(0, "Daily")
 
-        self.daysEntry = ttk.Combobox(container, values = recurringDays)
+        self.daysEntry = ttk.Combobox(container, values = self.reccuringDays)
         self.daysEntry.grid(row = 3, column = 0, padx = 10, pady = 10)
+
+        self.submitButton = ttk.Button(container, text = "Create Reccurance", command = self.submitReccuringTask)
+        self.submitButton.grid(row = 4, column = 0, padx = 10, pady = 10)
+
+        self.removeButton = ttk.Button(container, text = "Remove reccurance", command = self.removeReccurance, state = "disabled")
+        self.removeButton.grid(row = 5, column = 0, padx = 10, pady = 10)
         # ~ Form Window -----------------------------------------------
     def fillConfigEntries(self, event):
-        print("Filling entires with proper data")
+        taskName = self.taskEntry.get()
 
+        query = f'SELECT * FROM Tasks WHERE taskName = \"{taskName}\" AND routineName = \"Tasks\"'
+        rec = dict(self.mTask.mTaskDB.sql_query_row(query))
+        recurFrequency = rec['recurFrequency']
+
+        if recurFrequency:
+            self.daysEntry.current(self.reccuringDays.index(recurFrequency))
+            self.submitButton.config(text = "Alter Reccurance")
+            self.removeButton.config(state = "enabled")
+        else:
+            self.daysEntry.current(0)
+            self.submitButton.config(text = "Create Reccurance")
+            self.removeButton.config(state = "disabled")
+    def submitReccuringTask(self):
+        taskName = self.taskEntry.get()
+        frequency = self.daysEntry.get()
+
+        if frequency == "Daily":
+            frequency = 1
+        elif frequency == "Every Other Day":
+            frequency = 2
+        else:
+            frequency = int(frequency[6]) + 1 # Retrieve only the number
+
+        refDate = datetime.today().date()
+        query = f'UPDATE Tasks SET recurFrequency = \"{frequency}\", recurRefDate = \"{refDate}\" WHERE taskName = \"{taskName}\" AND routineName = \"Tasks\"'
+        self.mTask.mTaskDB.sql_do(query)
+
+        if self.submitButton.cget("text") == "Create Reccurance":
+            mBox.showinfo(title = "Creation Success!", message= "You have created a task reccurance")
+        elif self.submitButton.cget("text") == "Alter Reccurance":
+            mBox.showinfo(title = "Alter Success!", message= "You have altered a task reccurance")
+    def removeReccurance(self):
+        taskName = self.taskEntry.get()
+
+        query = f'UPDATE Tasks SET recurFrequency = NULL, recurRefDate = NULL WHERE taskName = \"{taskName}\" AND routineName = \"Tasks\"'
+        self.mTask.mTaskDB.sql_do(query)
+
+        mBox.showinfo(title = "Success!", message= "You have removed this task occurance")
     def getwindowInfo(self, event):
         window = event.widget
         print("x : " + str(window.winfo_width()))

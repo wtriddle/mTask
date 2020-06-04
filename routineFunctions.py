@@ -1,6 +1,7 @@
 from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox as mBox
+from datetime import datetime
 
 class RoutineFunctions():
     def __init__(self, mTask):
@@ -8,6 +9,7 @@ class RoutineFunctions():
 
     def newRoutine(self):
         userTasks = self.mTask.loadUserTasks()
+
         # Form Window ------------------------------------------------------
         self.window = Toplevel(self.mTask.root)
         self.window.geometry("270x520-2450+250")  
@@ -49,6 +51,7 @@ class RoutineFunctions():
         '''
         taskName = self.addTaskBox.get()
         
+        # Ensure task is unique inside loading frame
         loadedTasks = [task.cget('text') for task in self.routineTasksFrame.winfo_children()]
         if taskName in loadedTasks:
             mBox.showerror(title = "Task Additon Error", message= "Please select a task that has not been added to the routine list")
@@ -240,6 +243,7 @@ class RoutineFunctions():
             mBox.showerror(title = "Task Addition Error", message= "Please choose a task that is not in the list")
             return  
 
+        # Check largest container frame to see if GUI refactoring is necessary
         maxBefore = len(self.taskToRemoveFrame.winfo_children()) if len(self.taskToRemoveFrame.winfo_children()) > len(self.taskToAddFrame.winfo_children()) else len(self.taskToAddFrame.winfo_children())
 
         ttk.Label(self.taskToRemoveFrame, text = taskName).grid(row = len(self.taskToRemoveFrame.winfo_children()), column = 0, sticky = W)
@@ -262,6 +266,7 @@ class RoutineFunctions():
             mBox.showerror(title = "Task Addition Error", message= "Please choose a task that is not in the list")
             return 
 
+        # Check largest container frame to see if GUI refactoring is necessary
         maxBefore = len(self.taskToRemoveFrame.winfo_children()) if len(self.taskToRemoveFrame.winfo_children()) > len(self.taskToAddFrame.winfo_children()) else len(self.taskToAddFrame.winfo_children())
 
         ttk.Label(self.taskToAddFrame, text = taskName).grid(row = len(self.taskToAddFrame.winfo_children()), column = 0, sticky = W)
@@ -296,6 +301,7 @@ class RoutineFunctions():
         if oldRoutineName != newRoutineName:
             query = f'UPDATE Tasks SET routineName = \"{newRoutineName}\" WHERE routineName = \"{oldRoutineName}\"'
             self.mTask.mTaskDB.sql_do(query)
+
             query = f'UPDATE Routines SET routineName = \"{newRoutineName}\" WHERE routineName = \"{oldRoutineName}\"'
             self.mTask.mTaskDB.sql_do(query)
         
@@ -312,6 +318,77 @@ class RoutineFunctions():
         
         mBox.showinfo(title = "Success!", message="Your routine has been successfully updated!")
 
+    def configRecurringRoutine(self):
+        userRoutines = self.mTask.loadUserRoutines()
+
+        # Form window ---------------------------------------------
+        window = Toplevel(self.mTask.root)
+        window.geometry("500x650-2450+250")
+        container = ttk.Frame(window)
+        container.pack(expand = True, fill = "both")
+
+        ttk.Label(container, text = "Choose a Routine to configure").grid(row = 0, column = 0, padx = 10, pady = 10)
+
+        self.routineEntry = ttk.Combobox(container, values = userRoutines)
+        self.routineEntry.bind("<<ComboboxSelected>>", self.fillConfigEntries)
+        self.routineEntry.grid(row = 1, column = 0, padx = 10, pady = 10)
+
+        ttk.Label(container, text = "This routine shall occur: ").grid(row = 2, column = 0, padx = 10, pady = 10)
+
+        self.reccuringDays = [("Every " + str(x) + " days ") for x in range(2,7)]
+        self.reccuringDays.insert(0, "Every other day")
+        self.reccuringDays.insert(0, "Daily")
+
+        self.daysEntry = ttk.Combobox(container, values = self.reccuringDays)
+        self.daysEntry.grid(row = 3, column = 0, padx = 10, pady = 10)
+
+        self.submitButton = ttk.Button(container, text = "Create Reccurance", command = self.submitReccuringTask)
+        self.submitButton.grid(row = 4, column = 0, padx = 10, pady = 10)
+
+        self.removeButton = ttk.Button(container, text = "Remove reccurance", command = self.removeReccurance, state = "disabled")
+        self.removeButton.grid(row = 5, column = 0, padx = 10, pady = 10)
+        # ~ Form window ---------------------------------------------
+    def fillConfigEntries(self, event):
+        routineName = self.routineEntry.get()
+
+        query = f'SELECT * FROM Routines WHERE routineName = \"{routineName}\"'
+        rec = dict(self.mTask.mTaskDB.sql_query_row(query))
+        recurFrequency = rec['recurFrequency']
+
+        if recurFrequency:
+            self.daysEntry.current(self.reccuringDays.index(recurFrequency))
+            self.submitButton.config(text = "Alter Reccurance")
+            self.removeButton.config(state = "enabled")
+        else:
+            self.daysEntry.current(0)
+            self.submitButton.config(text = "Create Reccurance")
+            self.removeButton.config(state = "disabled")
+    def submitReccuringTask(self):
+        routineName = self.routineEntry.get()
+        frequency = self.daysEntry.get()
+
+        if frequency == "Daily":
+            frequency = 1
+        elif frequency == "Every Other Day":
+            frequency = 2
+        else:
+            frequency = int(frequency[6]) + 1 # Retrieve only the number
+
+        refDate = datetime.today().date()
+        query = f'UPDATE Routines SET recurFrequency = \"{frequency}\", recurRefDate = \"{refDate}\" WHERE routineName = \"{routineName}\"'
+        self.mTask.mTaskDB.sql_do(query)
+
+        if self.submitButton.cget("text") == "Create Reccurance":
+            mBox.showinfo(title = "Creation Success!", message= "You have created a routine reccurance")
+        elif self.submitButton.cget("text") == "Alter Reccurance":
+            mBox.showinfo(title = "Alter Success!", message= "You have altered a routine reccurance")
+    def removeReccurance(self):
+        routineName = self.routineEntry.get()
+
+        query = f'UPDATE Routines SET recurFrequency = NULL, recurRefDate = NULL WHERE routineName = \"{routineName}\"'
+        self.mTask.mTaskDB.sql_do(query)
+        
+        mBox.showinfo(title = "Success!", message= "You have removed this routine occurance")    
     def getwindowInfo(self, event):
         window = event.widget
         print("x : " + str(window.winfo_width()))
