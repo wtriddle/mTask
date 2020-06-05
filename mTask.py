@@ -24,7 +24,7 @@ class mTask():
         # Root, Database, and Menu Init -----------------------------------------------------------------------
         self.root = Tk()                                                # Top level window
         self.root.title('mTask')                                        # Assign a title
-        self.root.geometry("640x480-2650+150")                          # Configure geometry
+        self.root.geometry("-2650+150")                          # Configure geometry
         self.root.iconbitmap("mTask.ico")                               # mTask icon config
 
         self.initDB()                                                   # Initalize user database
@@ -40,7 +40,7 @@ class mTask():
 
         # Tab Control Init -----------------------------------------------------------------------------------
         self.tabControl = ttk.Notebook(self.root)                       # Top level notebook 
-        self.tabControl.pack(padx=10,pady=10)                           # Pack into GUI
+        self.tabControl.pack(padx=10,pady=10, ipadx = 100, ipady = 100)                           # Pack into GUI
         self.initTabs()                                                 # Initialize the GUI with recurring tasks/routines
         # ~ Tab Control --------------------------------------------------------------------------------------
 
@@ -50,8 +50,12 @@ class mTask():
         self.style.configure("TFrame", background = "#0f4c75", foreground = "#1b262c", font = 8)
         self.style.configure("TLabel", background = "#0f4c75", foreground = "#acdbdf", font = 8)
         self.style.configure("TLabelframe", background = "#0f4c75", foreground = "green", font = 8)
-        # self.style.configure("TNotebook", background = "#0f4c75", foreground = "#acdbdf")
-        self.style.configure("TEntry", font = 8)
+        self.root.option_add("*TEntry.font", 10)
+        self.root.option_add("*TCombobox*Listbox.font", 10)
+        self.root.option_add("*TCombobox.font", 10)
+        self.root.option_add("*TCombobox.background", "green")
+        self.root.option_add("*TCombobox*Listbox.background", "#1f4287")
+        self.root.option_add("*TCombobox*Listbox.foreground", "#00d5ff")
         # ~ Styles -------------------------------------------------------------------------------------------
 
     def addTaskToGUI(self, taskName, taskTime, routineName):
@@ -111,19 +115,24 @@ class mTask():
         self.routineTab = ttk.Frame(self.tabControl)
         self.tabControl.add(self.routineTab, text = routineName)
 
-        self.toDoTaskFrame = ttk.LabelFrame(self.routineTab, text = " Incomplete Tasks ", width = 100, height = 100)
+        self.toDoTaskFrame = ttk.LabelFrame(self.routineTab, text = " Incomplete Tasks ")
         self.completedTaskFrame = ttk.LabelFrame(self.routineTab, text = " Completed Tasks ")
         self.progressFrame = ttk.LabelFrame(self.routineTab, text = " Progress ")
         self.progressBar = ttk.Progressbar(self.progressFrame, mode = "determinate", maximum = 0.0)
 
         self.toDoTaskFrame.pack(fill = "both", expand = True, padx = 10, pady = 10)
+        self.toDoTaskFrame.columnconfigure(0, weight = 1)
+        self.toDoTaskFrame.columnconfigure(1, weight = 1)
+        self.toDoTaskFrame.columnconfigure(2, weight = 1)
         self.completedTaskFrame.pack(fill = "both", expand = True, padx = 10, pady = 10)
+        self.completedTaskFrame.columnconfigure(0, weight = 1)
+        self.completedTaskFrame.columnconfigure(1, weight = 1)
         self.progressFrame.pack(fill = "both", padx = 10, pady = 10)
         self.progressBar.pack(fill = "both", expand = True, padx = 10, pady = 10)
 
-        ttk.Label(self.toDoTaskFrame, text = "Complete Task").grid(row = 0, column = 0 , padx = 15, pady = 15)
-        ttk.Label(self.toDoTaskFrame, text = "Time").grid(row = 0, column = 1 , padx = 15, pady = 15)
-        ttk.Label(self.toDoTaskFrame, text = "Task").grid(row = 0, column = 2 , padx = 15, pady = 15)
+        ttk.Label(self.toDoTaskFrame, text = "Complete Task").grid(row = 0, column = 0 , padx = 15, pady = 15, sticky = NS)
+        ttk.Label(self.toDoTaskFrame, text = "Time").grid(row = 0, column = 1 , padx = 15, pady = 15, sticky = NS)
+        ttk.Label(self.toDoTaskFrame, text = "Task").grid(row = 0, column = 2 , padx = 15, pady = 15, sticky = NS)
 
         if tasks:
             for task in tasks:
@@ -285,13 +294,24 @@ class mTask():
             userRoutines = list(dict.fromkeys(userRoutines))
         return userRoutines
     
+    def loadSpecificRoutine(self, routineName):
+        '''
+            Load a routine directly into the GUI with its tasks into a new tab, where only the routineName is required
+        '''
+        routineTasks = []
+        query = f'SELECT * FROM Tasks WHERE routineName = \"{routineName}\"'
+        tasks = list(self.mTaskDB.sql_query(query))
+        for task in tasks:
+            routineTasks.append({'taskName': task['taskName'], 'taskTime' : task['taskTime'], 'routineName' : routineName})
+        self.addRoutineToGUI(routineName=routineName, tasks=routineTasks)
+
     def initTabs(self):
         '''
             Initalizes the tabs based on recurrant properties of tasks and routines set by the user
         '''
 
         # Tasks Tab Init ---------------------------------------------
-        recurringTasks = []
+        recurringTasks = [] # Loads tasks with a recuring property
         self.mTaskDB.set_table("Tasks")
         recs = self.mTaskDB.getrecs()
         for rec in recs:
@@ -299,7 +319,7 @@ class mTask():
                 recurringTasks.append(rec)
         
         if recurringTasks:
-            todaysTasks = self.recurantAlgorithm(recurringTasks)
+            todaysTasks = self.recurantAlgorithm(recurringTasks) # Determine what tasks should be auto-loaded
             tasksToAdd = []
             for task in todaysTasks:
                 tasksToAdd.append({'taskName': task['taskName'], 'taskTime' : task['taskTime'], 'routineName' : "Tasks"})
@@ -309,7 +329,7 @@ class mTask():
         # ~ Tasks Tab Init ---------------------------------------------
 
         # Routine Tab Init --------------------------------------------
-        recurringRoutines = []
+        recurringRoutines = [] # Loads routines with a recuring property
         self.mTaskDB.set_table("Routines")
         recs = self.mTaskDB.getrecs()
         for rec in recs:
@@ -317,33 +337,37 @@ class mTask():
                 recurringRoutines.append(rec)
         
         if recurringRoutines:
-            todaysRoutines = self.recurantAlgorithm(recurringRoutines)
+            todaysRoutines = self.recurantAlgorithm(recurringRoutines) # Determine what routines should be auto loaded
             for routine in todaysRoutines:
-                routineTasks = []
-                routineName = routine['routineName']
-                query = f'SELECT * FROM Tasks WHERE routineName = \"{routineName}\"'
-                tasks = list(self.mTaskDB.sql_query(query))
-                for task in tasks:
-                    routineTasks.append({'taskName': task['taskName'], 'taskTime' : task['taskTime'], 'routineName' : routineName})
-                self.addRoutineToGUI(routineName=routineName, tasks=routineTasks)
+                self.loadSpecificRoutine(routineName=routine['routineName'])
         # ~ Routine Tab Init ------------------------------------------
     def recurantAlgorithm(self, R):
         '''
             Determines what routines or tasks should be automatically loaded into the GUI based on the recurring property configuration
             Works for both routines and tasks
         '''
-        loadedToday = []
-        today = datetime.datetime.today().date()
+        loadedToday = [] 
+        today = datetime.datetime.today().date() # In the form YYYY-MM-DD
+
+        # Loop over exsisting recuring entries
         for rec in R:
-            frequency = int(rec['recurFrequency'])
-            refDate = rec['recurRefDate'].split("-")
+
+            # Data from database about recurrances
+            frequency = int(rec['recurFrequency']) # A number 1-7
+            refDate = rec['recurRefDate'].split("-") # A date in a YYYY-MM-DD form
+
+            # Create create reference date as a datetime object 
             refInfo = {'year':int(refDate[0]), 'month' : int(refDate[1]), 'day' : int(refDate[2])}
             refDate = datetime.date(**refInfo)
+
+            # Use datetime object to determine if a recurant task is to recur today
             daysSinceCreation = today - refDate
             if daysSinceCreation.days % frequency == 0:
                 loadedToday.append(rec)
+
         return loadedToday
-            
+    
+
 # mTask object
 mtask = mTask()
 

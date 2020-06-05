@@ -12,9 +12,10 @@ class RoutineFunctions():
 
         # Form Window ------------------------------------------------------
         self.window = Toplevel(self.mTask.root)
-        self.window.geometry("270x520-2450+250")  
+        self.window.geometry("-2450+250")  
         container = ttk.Frame(self.window)
         container.pack(expand = True, fill = "both")
+        container.columnconfigure(0, weight = 1)
 
         ttk.Label(container, text = "Enter a new routine").grid(row = 0, column = 0, padx = 10, pady = 10)
 
@@ -25,6 +26,7 @@ class RoutineFunctions():
         ttk.Label(container, text = "Select a task to add").grid(row = 2, column = 0, padx = 10, pady = 10)
 
         self.addTaskBox = ttk.Combobox(container, values = userTasks, state = "readonly")
+        self.addTaskBox.bind("<<ComboboxSelected>>",lambda e: container.focus())
         self.addTaskBox.grid(row = 3, column = 0, padx = 10, pady = 10)
         
         # Rows not in order because routineTaskFrame needs to be intialized before button can be clicked
@@ -40,7 +42,7 @@ class RoutineFunctions():
         self.descriptionEntry.grid(row = 7, column = 0, padx = 10, pady = 10)
         
         self.submitButton = ttk.Button(container, text = "Create Routine", command = self.submitNewRoutine)
-        self.submitButton.grid(row = 8, column = 0, padx = 10, pady =10, sticky = NSEW)
+        self.submitButton.grid(row = 8, column = 0, padx = 10, pady = 10)
 
         self.routineEntry.bind("<KeyRelease>", self.updateRoutineAddGUI)
         self.routineEntry.focus()
@@ -56,11 +58,6 @@ class RoutineFunctions():
         if taskName in loadedTasks:
             mBox.showerror(title = "Task Additon Error", message= "Please select a task that has not been added to the routine list")
             return 
-
-        # Refactor GUI to include all widgets once new task is gridded to routineTasksFrame
-        y = self.window.winfo_height()
-        yDelta = y + 27
-        self.window.geometry("270x" + str(yDelta))
 
         ttk.Label(self.routineTasksFrame, text = taskName).grid(row = len(self.routineTasksFrame.winfo_children()), column = 0, sticky = W)
     def updateRoutineAddGUI(self, event):
@@ -110,14 +107,15 @@ class RoutineFunctions():
 
         # Form Window ------------------------------------------------------
         window = Toplevel(self.mTask.root)
-        window.geometry("200x140-2450+250")  
-        window.resizable(False, False)
+        window.geometry("-2450+250")  
         container = ttk.Frame(window)
         container.pack(expand = True, fill = "both")
+        container.columnconfigure(0, weight = 1)
 
         ttk.Label(container, text = "Select a Routine").grid(row = 0, column = 0, padx = 30, pady = 10)
 
         self.routineEntry = ttk.Combobox(container, values = userRoutines, state = "readonly")
+        self.routineEntry.bind("<<ComboboxSelected>>",lambda e: container.focus())
         self.routineEntry.grid(row = 1, column = 0, padx = 30, pady = 10)
 
         self.submitButton = ttk.Button(container, text = "Load", command = self.submitLoadRoutine)
@@ -133,14 +131,7 @@ class RoutineFunctions():
             mBox.showerror(title="Load Routine Error", message="Please select a routine to load")
             return
 
-        query = f'SELECT * FROM Tasks WHERE routineName = \"{routineName}\"'
-        recs = list(self.mTask.mTaskDB.sql_query(query))
-
-        tasksToAdd = []
-        for rec in recs:
-            tasksToAdd.append({'taskName': rec['taskName'], 'taskTime' : rec['taskTime'], 'routineName' : routineName})
-
-        self.mTask.addRoutineToGUI(tasks=tasksToAdd, routineName= routineName)
+        self.mTask.loadSpecificRoutine(routineName=routineName)
     
     def editRoutine(self):
         '''
@@ -150,60 +141,63 @@ class RoutineFunctions():
 
         # Form Window ------------------------------------------------------
         self.window = Toplevel(self.mTask.root)
-        self.window.geometry("500x650-2450+250") 
-        self.window.bind("<ButtonRelease-1>", self.getwindowInfo)
+        self.window.geometry("-2450+250") 
+        self.container = ttk.Frame(self.window)
+        self.container.pack(expand = True, fill = "both")
+        self.container.columnconfigure(0, weight = 1)
+        self.container.columnconfigure(1, weight = 1)
 
-        container = ttk.Frame(self.window)
-        container.pack(expand = True, fill = "both")
+        ttk.Label(self.container, text = "Select a Routine").grid(row = 0, column = 0, columnspan = 2, padx = 10, pady = 10)
 
-        ttk.Label(container, text = "Select a Routine").grid(row = 0, column = 0, columnspan = 2, padx = 10, pady = 10)
-
-        self.routineEntry = ttk.Combobox(container, values = userRoutines, state = "readonly")
+        self.routineEntry = ttk.Combobox(self.container, values = userRoutines, state = "readonly")
         self.routineEntry.bind("<<ComboboxSelected>>", self.fillEntries)
         self.routineEntry.grid(row = 1, column = 0, padx = 10, pady = 10, columnspan = 2)
 
-        ttk.Label(container, text = "Enter a new Routine Name").grid(row = 2, column = 0, columnspan = 2, padx = 10, pady = 10)
+        ttk.Label(self.container, text = "Enter a new Routine Name").grid(row = 2, column = 0, columnspan = 2, padx = 10, pady = 10)
 
-        self.newRoutineEntry = ttk.Entry(container)
+        self.newRoutineEntry = ttk.Entry(self.container)
         self.newRoutineEntry.grid(row = 3, column = 0, padx = 10, pady = 10, columnspan = 2)
 
-        ttk.Label(container, text = "Select a Task Name to Add").grid(row = 4, column = 0, padx = 10, pady = 10)
+        ttk.Label(self.container, text = "Select a Task Name to Add").grid(row = 4, column = 0, padx = 10, pady = 10)
 
-        ttk.Label(container, text = "Select a Task Name to Remove").grid(row = 4, column = 1, padx = 10, pady = 10)
+        ttk.Label(self.container, text = "Select a Task Name to Remove").grid(row = 4, column = 1, padx = 10, pady = 10)
 
-        self.taskToAdd = ttk.Combobox(container, state = "readonly")
+        self.taskToAdd = ttk.Combobox(self.container, state = "readonly")
+        self.taskToAdd.bind("<<ComboboxSelected>>",lambda e: self.container.focus())
         self.taskToAdd.grid(row = 5 , column = 0, padx = 10)
 
-        self.taskToRemove = ttk.Combobox(container, state = "readonly")
+        self.taskToRemove = ttk.Combobox(self.container, state = "readonly")
+        self.taskToRemove.bind("<<ComboboxSelected>>",lambda e: self.container.focus())
         self.taskToRemove.grid(row = 5 , column = 1, padx = 10)
 
-        self.taskToAddFrame = ttk.LabelFrame(container, text = " Tasks to Add ")
+        self.taskToAddFrame = ttk.LabelFrame(self.container, text = " Tasks to Add ")
         self.taskToAddFrame.grid(row = 7, column = 0)
 
-        self.submitTaskToAdd = ttk.Button(container, text = "Add Task", command = self.addTaskToAddFrame)
+        self.submitTaskToAdd = ttk.Button(self.container, text = "Add Task", command = self.addTaskToAddFrame)
         self.submitTaskToAdd.grid(row = 6, column = 0, padx = 10, pady = 5 )
 
-        self.taskToRemoveFrame = ttk.LabelFrame(container, text = " Tasks to Remove ")
+        self.taskToRemoveFrame = ttk.LabelFrame(self.container, text = " Tasks to Remove ")
         self.taskToRemoveFrame.grid(row = 7, column = 1)
 
-        self.submitTaskToRemove = ttk.Button(container, text = "Add Task", command = self.addTaskToRemoveFrame)
+        self.submitTaskToRemove = ttk.Button(self.container, text = "Add Task", command = self.addTaskToRemoveFrame)
         self.submitTaskToRemove.grid(row = 6, column = 1, padx = 10, pady = 5)
 
-        ttk.Label(container, text = "Edit the Routine Description").grid(row = 8, column = 0, columnspan = 2, padx = 10, pady = 10)
+        ttk.Label(self.container, text = "Edit the Routine Description").grid(row = 8, column = 0, columnspan = 2, padx = 10, pady = 10)
 
-        self.newDescriptionEntry = Text(container, wrap = WORD, width = 30, height = 10)
+        self.newDescriptionEntry = Text(self.container, wrap = WORD, width = 30, height = 10)
         self.newDescriptionEntry.grid(row = 9, column = 0, columnspan = 2, pady = 5, padx = 10)
 
-        self.clearButton = ttk.Button(container, text = "Clear Tasks", command = self.clearEditRoutine)
+        self.clearButton = ttk.Button(self.container, text = "Clear Tasks", command = self.clearEditRoutine)
         self.clearButton.grid(row = 10, column = 0, columnspan = 2, pady = 20)
 
-        self.submitButton = ttk.Button(container, text = "Edit", command = self.submitEditRoutine)
+        self.submitButton = ttk.Button(self.container, text = "Edit", command = self.submitEditRoutine)
         self.submitButton.grid(row = 11, column = 0, columnspan = 2, pady = 20)
         # ~ Form Window ------------------------------------------------------
     def fillEntries(self, event):
         '''
             Fills routine edit form widgets with proper values based on the selected routine
         '''
+        self.container.focus()
         routineName = self.routineEntry.get()
         userTasks = self.mTask.loadUserTasks()
 
@@ -243,18 +237,8 @@ class RoutineFunctions():
             mBox.showerror(title = "Task Addition Error", message= "Please choose a task that is not in the list")
             return  
 
-        # Check largest container frame to see if GUI refactoring is necessary
-        maxBefore = len(self.taskToRemoveFrame.winfo_children()) if len(self.taskToRemoveFrame.winfo_children()) > len(self.taskToAddFrame.winfo_children()) else len(self.taskToAddFrame.winfo_children())
-
         ttk.Label(self.taskToRemoveFrame, text = taskName).grid(row = len(self.taskToRemoveFrame.winfo_children()), column = 0, sticky = W)
 
-        maxAfter = len(self.taskToRemoveFrame.winfo_children()) if len(self.taskToRemoveFrame.winfo_children()) > len(self.taskToAddFrame.winfo_children()) else len(self.taskToAddFrame.winfo_children())
-
-        if maxAfter > maxBefore:
-            # Refactor GUI to include all widgets once new task is gridded to routineTasksFrame
-            y = self.window.winfo_height()
-            yDelta = y + 27
-            self.window.geometry("500x" + str(yDelta))
     def addTaskToAddFrame(self):
         '''
             Adds the selected task from the task combobox to a labelframe, which specifies the tasks to add from currently selected routine
@@ -266,18 +250,7 @@ class RoutineFunctions():
             mBox.showerror(title = "Task Addition Error", message= "Please choose a task that is not in the list")
             return 
 
-        # Check largest container frame to see if GUI refactoring is necessary
-        maxBefore = len(self.taskToRemoveFrame.winfo_children()) if len(self.taskToRemoveFrame.winfo_children()) > len(self.taskToAddFrame.winfo_children()) else len(self.taskToAddFrame.winfo_children())
-
         ttk.Label(self.taskToAddFrame, text = taskName).grid(row = len(self.taskToAddFrame.winfo_children()), column = 0, sticky = W)
-
-        maxAfter = len(self.taskToRemoveFrame.winfo_children()) if len(self.taskToRemoveFrame.winfo_children()) > len(self.taskToAddFrame.winfo_children()) else len(self.taskToAddFrame.winfo_children())
-
-        if maxAfter > maxBefore:
-            # Refactor GUI to include all widgets once new task is gridded to routineTasksFrame
-            y = self.window.winfo_height()
-            yDelta = y + 27
-            self.window.geometry("500x" + str(yDelta))
     def clearEditRoutine(self):
         '''
             Removes all tasks from the add to and remove from task frames inside of the edit routine form
@@ -323,33 +296,35 @@ class RoutineFunctions():
 
         # Form window ---------------------------------------------
         window = Toplevel(self.mTask.root)
-        window.geometry("500x650-2450+250")
-        container = ttk.Frame(window)
-        container.pack(expand = True, fill = "both")
+        window.geometry("-2450+250")
+        self.container = ttk.Frame(window)
+        self.container.pack(expand = True, fill = "both")
+        self.container.columnconfigure(0, weight = 1)
 
-        ttk.Label(container, text = "Choose a Routine to configure").grid(row = 0, column = 0, padx = 10, pady = 10)
+        ttk.Label(self.container, text = "Choose a Routine to configure").grid(row = 0, column = 0, padx = 10, pady = 10)
 
-        self.routineEntry = ttk.Combobox(container, values = userRoutines)
+        self.routineEntry = ttk.Combobox(self.container, values = userRoutines)
         self.routineEntry.bind("<<ComboboxSelected>>", self.fillConfigEntries)
         self.routineEntry.grid(row = 1, column = 0, padx = 10, pady = 10)
 
-        ttk.Label(container, text = "This routine shall occur: ").grid(row = 2, column = 0, padx = 10, pady = 10)
+        ttk.Label(self.container, text = "This routine shall occur: ").grid(row = 2, column = 0, padx = 10, pady = 10)
 
         self.reccuringDays = [("Every " + str(x) + " days ") for x in range(2,7)]
         self.reccuringDays.insert(0, "Every other day")
         self.reccuringDays.insert(0, "Daily")
 
-        self.daysEntry = ttk.Combobox(container, values = self.reccuringDays)
+        self.daysEntry = ttk.Combobox(self.container, values = self.reccuringDays)
         self.daysEntry.grid(row = 3, column = 0, padx = 10, pady = 10)
 
-        self.submitButton = ttk.Button(container, text = "Create Reccurance", command = self.submitReccuringTask)
+        self.submitButton = ttk.Button(self.container, text = "Create Reccurance", command = self.submitReccuringTask)
         self.submitButton.grid(row = 4, column = 0, padx = 10, pady = 10)
 
-        self.removeButton = ttk.Button(container, text = "Remove reccurance", command = self.removeReccurance, state = "disabled")
+        self.removeButton = ttk.Button(self.container, text = "Remove reccurance", command = self.removeReccurance, state = "disabled")
         self.removeButton.grid(row = 5, column = 0, padx = 10, pady = 10)
         # ~ Form window ---------------------------------------------
     def fillConfigEntries(self, event):
         routineName = self.routineEntry.get()
+        self.container.focus()
 
         query = f'SELECT * FROM Routines WHERE routineName = \"{routineName}\"'
         rec = dict(self.mTask.mTaskDB.sql_query_row(query))

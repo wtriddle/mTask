@@ -15,28 +15,28 @@ class TaskFunctions():
             Form for new task creation
         '''
         window = Toplevel(self.mTask.root)
-        window.geometry("270x380-2450+250")
-        window.resizable(False, False)
-        containerFrame = ttk.Frame(window)
-        containerFrame.pack(expand = True, fill = "both")
+        window.geometry("-2450+250")
+        container = ttk.Frame(window)
+        container.pack(expand = True, fill = "both")
+        container.columnconfigure(0, weight = 1)
 
-        ttk.Label(containerFrame, text = "New Task Name").grid(row = 0 , column = 0, pady = 5)
+        ttk.Label(container, text = "New Task Name").grid(row = 0 , column = 0, pady = 5)
 
-        self.taskEntry = ttk.Entry(containerFrame)
+        self.taskEntry = ttk.Entry(container)
         self.taskEntry.grid(row = 1, column = 0, pady = 5)
 
-        ttk.Label(containerFrame, text = "Target Start Time").grid(row = 2, column = 0)
+        ttk.Label(container, text = "Target Start Time").grid(row = 2, column = 0)
 
-        self.timeEntry = ttk.Entry(containerFrame)
+        self.timeEntry = ttk.Entry(container)
         self.timeEntry.grid(row = 3, column = 0, pady = 5)
 
-        ttk.Label(containerFrame, text = "Task Description").grid(row = 4, column = 0)
+        ttk.Label(container, text = "Task Description").grid(row = 4, column = 0)
 
-        self.descriptionEntry = Text(containerFrame, wrap = WORD, width = 30, height = 10)
+        self.descriptionEntry = Text(container, wrap = WORD, width = 30, height = 10)
         self.descriptionEntry.grid(row = 5, column = 0, pady = 5, padx = 10)
 
-        self.submitButton = ttk.Button(containerFrame, text = "Create", command = self.submitNewTaskData)
-        self.submitButton.grid(row = 6, column = 0, pady = 20, padx = 10, sticky = NSEW)
+        self.submitButton = ttk.Button(container, text = "Create", command = self.submitNewTaskData)
+        self.submitButton.grid(row = 6, column = 0, pady = 20, padx = 10)
 
         self.taskEntry.focus()
     def submitNewTaskData(self):
@@ -71,25 +71,25 @@ class TaskFunctions():
 
         # Form Window ------------------------------------------------------
         window = Toplevel(self.mTask.root)
-        window.geometry("160x230-2450+250") 
-        window.resizable(False, False)
-        containerFrame = ttk.Frame(window)
-        containerFrame.pack(expand = True, fill = "both")
+        window.geometry("-2450+250") 
+        container = ttk.Frame(window)
+        container.pack(expand = True, fill = "both")
+        container.columnconfigure(0, weight = 1)
 
-        ttk.Label(containerFrame, text = "Choose a Task").grid(row = 0, column = 0, pady = 10, padx = 10)
+        ttk.Label(container, text = "Choose a Task").grid(row = 0, column = 0, pady = 10, padx = 10)
 
-        self.taskEntry = ttk.Combobox(containerFrame, state = "readonly")
-        self.taskEntry.config(values = userTasks)
+        self.taskEntry = ttk.Combobox(container, state = "readonly", values = userTasks)
+        self.taskEntry.bind("<<ComboboxSelected>>",lambda e: container.focus())
         self.taskEntry.grid(row = 1, column = 0, padx = 10, pady = 10)
 
-        ttk.Label(containerFrame, text = "Choose a Routine").grid(row = 2, column = 0, pady = 10, padx = 10)
+        ttk.Label(container, text = "Choose a Routine").grid(row = 2, column = 0, pady = 10, padx = 10)
 
-        self.routineEntry = ttk.Combobox(containerFrame, state = "readonly")
-        self.routineEntry.config(values = userRoutines)
+        self.routineEntry = ttk.Combobox(container, state = "readonly",values = userRoutines)
+        self.routineEntry.bind("<<ComboboxSelected>>",lambda e: container.focus())
         self.routineEntry.grid(row = 3, column = 0, padx = 10, pady = 10)
 
-        self.submitButton = ttk.Button(containerFrame, text = "Load", command = self.submitLoadTaskData)
-        self.submitButton.grid(row = 4, column = 0, pady = 20, padx = 10, sticky = NSEW)
+        self.submitButton = ttk.Button(container, text = "Load", command = self.submitLoadTaskData)
+        self.submitButton.grid(row = 4, column = 0, pady = 20, padx = 10)
         # ~ Form Window ------------------------------------------------------
     def submitLoadTaskData(self):
         '''
@@ -113,46 +113,47 @@ class TaskFunctions():
 
         # Form Window ------------------------------------------------------
         window = Toplevel(self.mTask.root)
-        window.geometry("270x620-2450+250")  
-        window.resizable(False, False)
-        containerFrame = ttk.Frame(window)
-        containerFrame.pack(expand = True, fill = "both")
+        window.geometry("-2450+250")  
+        self.container = ttk.Frame(window)
+        self.container.pack(expand = True, fill = "both")
+        self.container.columnconfigure(0, weight = 1)
 
-        ttk.Label(containerFrame, text = "Choose a Task to Change").grid(row = 0, column = 0, pady = 10, padx = 10)
+        ttk.Label(self.container, text = "Choose a Task to Change").grid(row = 0, column = 0, pady = 10, padx = 10)
 
-        self.taskEntry = ttk.Combobox(containerFrame, state = "readonly")
+        self.taskEntry = ttk.Combobox(self.container, state = "readonly", font = 40)
         self.taskEntry.bind("<<ComboboxSelected>>", self.fillRoutinesBox)
         self.taskEntry.config(values = userTasks)
         self.taskEntry.grid(row = 1, column = 0, padx = 10, pady = 10)
 
-        ttk.Label(containerFrame, text = "Choose the routine to alter it from").grid(row = 2, column = 0, pady = 10, padx = 10)
+        ttk.Label(self.container, text = "Choose the routine to alter it from").grid(row = 2, column = 0, pady = 10, padx = 10)
 
-        self.routineEntry = ttk.Combobox(containerFrame, state = "disabled")
+        self.routineEntry = ttk.Combobox(self.container, state = "disabled")
         self.routineEntry.bind("<<ComboboxSelected>>", self.fillPropertyEntries)
         self.routineEntry.grid(row = 3, column = 0, padx = 10, pady = 10)
 
-        ttk.Label(containerFrame, text = "Enter a new Task Name").grid(row = 4, column = 0, pady = 10, padx = 10)
+        ttk.Label(self.container, text = "Enter a new Task Name").grid(row = 4, column = 0, pady = 10, padx = 10)
 
-        self.newTaskEntry = ttk.Entry(containerFrame, state = "disabled")
+        self.newTaskEntry = ttk.Entry(self.container, state = "disabled")
         self.newTaskEntry.grid(row = 5, column = 0, padx = 10, pady = 10)
 
-        ttk.Label(containerFrame, text = "Enter a new Task Start Time").grid(row = 6, column = 0, pady = 10, padx = 10)
+        ttk.Label(self.container, text = "Enter a new Task Start Time").grid(row = 6, column = 0, pady = 10, padx = 10)
 
-        self.newTimeEntry = ttk.Entry(containerFrame, state = "disabled")
+        self.newTimeEntry = ttk.Entry(self.container, state = "disabled")
         self.newTimeEntry.grid(row = 7, column = 0, padx = 10, pady = 10)
 
-        ttk.Label(containerFrame, text = "Change the Description").grid(row = 8, column = 0, pady = 10, padx = 10)
+        ttk.Label(self.container, text = "Change the Description").grid(row = 8, column = 0, pady = 10, padx = 10)
 
-        self.newDescriptionEntry = Text(containerFrame, wrap = WORD, state = "disabled", height = 10, width = 30)
+        self.newDescriptionEntry = Text(self.container, wrap = WORD, state = "disabled", height = 10, width = 30)
         self.newDescriptionEntry.grid(row = 9, column = 0, padx = 10, pady = 10)
 
-        self.submitButton = ttk.Button(containerFrame, text = "Edit", command = self.submitEditTaskData)
-        self.submitButton.grid(row = 10, column = 0, pady = 20, padx = 10, sticky = NSEW)
+        self.submitButton = ttk.Button(self.container, text = "Edit", command = self.submitEditTaskData)
+        self.submitButton.grid(row = 10, column = 0, pady = 20, padx = 10)
         # ~ Form Window ------------------------------------------------------
     def fillRoutinesBox(self, event):
         '''
             Updates the routine Combobox selection to show only the routines from which the task is apart of
         '''
+        self.container.focus()
         taskName = str(self.taskEntry.get())
 
         query = f'SELECT * FROM Tasks WHERE taskName = \"{taskName}\"'
@@ -164,6 +165,7 @@ class TaskFunctions():
         '''
             Fills the editing fields with the current data from the database about the selected task-routine pair
         '''
+        self.container.focus()
         taskName = str(self.taskEntry.get())
         routineName = str(self.routineEntry.get())
 
@@ -208,9 +210,10 @@ class TaskFunctions():
 
         # Form Window -----------------------------------------------
         window = Toplevel(self.mTask.root)
-        window.geometry("640x480-2450+250")
+        window.geometry("-2450+250")
         container = ttk.Frame(window)
         container.pack(expand = True, fill = "both")
+        container.columnconfigure(0, weight = 1)
 
         ttk.Label(container, text = "Choose a task to configure").grid(row = 0, column = 0, padx = 10, pady = 10)
 
