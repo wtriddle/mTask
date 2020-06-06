@@ -24,7 +24,7 @@ class mTask():
         # Root, Database, and Menu Init -----------------------------------------------------------------------
         self.root = Tk()                                                # Top level window
         self.root.title('mTask')                                        # Assign a title
-        self.root.geometry("-2650+150")                          # Configure geometry
+        self.root.geometry("-2650+150")                                 # Temporary geometry configuration
         self.root.iconbitmap("mTask.ico")                               # mTask icon config
 
         self.initDB()                                                   # Initalize user database
@@ -98,9 +98,13 @@ class mTask():
                 # Set the focus to the tab where the task was added to
                 self.tabControl.select(tab)
 
-                # Add descriptor to label
+                # Add descriptor to label. Load default Tasks description if routine-task specific rec doesn't exist
                 query = f'SELECT * FROM Tasks WHERE routineName = \"{routineName}\" AND taskName = \"{taskName}\"'
-                rec = dict(self.mTaskDB.sql_query_row(query))
+                rec = self.mTaskDB.sql_query_row(query)
+                if not rec:
+                    query = f'SELECT * FROM Tasks WHERE routineName = \"Tasks\" AND taskName = \"{taskName}\"'
+                    rec = self.mTaskDB.sql_query_row(query)
+                rec = dict(rec)
                 taskDescription = rec['taskDescription']
                 descriptor.createDescriptor(self.taskNameLabel, taskDescription)
   
@@ -144,7 +148,7 @@ class mTask():
         ttk.Label(self.completedTaskFrame, text = "Completion Time").grid(row = 0, column = 1 , padx = 15, pady = 15)
 
         self.tabControl.select(self.routineTab)
-
+ 
     def completionOfTask(self, event):
         '''
             Removes the row of the completed task from the in-complete window,

@@ -13,53 +13,58 @@ class RoutineFunctions():
         # Form Window ------------------------------------------------------
         self.window = Toplevel(self.mTask.root)
         self.window.geometry("-2450+250")  
-        container = ttk.Frame(self.window)
-        container.pack(expand = True, fill = "both")
-        container.columnconfigure(0, weight = 1)
+        self.container = ttk.Frame(self.window)
+        self.container.pack(expand = True, fill = "both")
+        self.container.columnconfigure(0, weight = 1)
 
-        ttk.Label(container, text = "Enter a new routine").grid(row = 0, column = 0, padx = 10, pady = 10)
+        ttk.Label(self.container, text = "Enter a new routine").grid(row = 0, column = 0, padx = 10, pady = 10)
 
         self.routineName = StringVar()
-        self.routineEntry = ttk.Entry(container, textvariable = self.routineName)
+        self.routineEntry = ttk.Entry(self.container, textvariable = self.routineName)
         self.routineEntry.grid(row = 1, column = 0, padx = 10, pady = 10)
 
-        ttk.Label(container, text = "Select a task to add").grid(row = 2, column = 0, padx = 10, pady = 10)
+        ttk.Label(self.container, text = "Select a task to add").grid(row = 2, column = 0, padx = 10, pady = 10)
 
-        self.addTaskBox = ttk.Combobox(container, values = userTasks, state = "readonly")
-        self.addTaskBox.bind("<<ComboboxSelected>>",lambda e: container.focus())
+        self.addTaskBox = ttk.Combobox(self.container, values = userTasks, state = "readonly")
+        self.addTaskBox.bind("<<ComboboxSelected>>", self.fillNewEntries)
         self.addTaskBox.grid(row = 3, column = 0, padx = 10, pady = 10)
         
         # Rows not in order because routineTaskFrame needs to be intialized before button can be clicked
-        self.routineTasksFrame = ttk.LabelFrame(container, text = self.routineName.get())
+        self.routineTasksFrame = ttk.LabelFrame(self.container, text = self.routineName.get())
         self.routineTasksFrame.grid(row = 5, column = 0, padx = 10, pady = 10)
 
-        self.addTaskButton = ttk.Button(container, text = "Add task to Routine", command = self.addTaskToRoutineGUI)
+        self.addTaskButton = ttk.Button(self.container, text = "Add task to Routine", command = self.addTaskToRoutineGUI)
         self.addTaskButton.grid(row = 4, column = 0, padx = 10, pady = 10)
 
-        ttk.Label(container, text = "Describe the Routine").grid(row = 6, column = 0, padx = 10, pady = 10)
+        ttk.Label(self.container, text = "Describe the Routine").grid(row = 6, column = 0, padx = 10, pady = 10)
 
-        self.descriptionEntry = Text(container, wrap = WORD, width = 30, height = 10)
+        self.descriptionEntry = Text(self.container, wrap = WORD, width = 30, height = 10)
         self.descriptionEntry.grid(row = 7, column = 0, padx = 10, pady = 10)
         
-        self.submitButton = ttk.Button(container, text = "Create Routine", command = self.submitNewRoutine)
+        self.submitButton = ttk.Button(self.container, text = "Create Routine", command = self.submitNewRoutine)
         self.submitButton.grid(row = 8, column = 0, padx = 10, pady = 10)
 
         self.routineEntry.bind("<KeyRelease>", self.updateRoutineAddGUI)
         self.routineEntry.focus()
         # ~ Form Window ------------------------------------------------------
+    def fillNewEntries(self, event):
+        '''
+            Check current GUI to refactor the new form in a good way
+        '''
+        self.container.focus()
+        taskName = self.addTaskBox.get()
+        loadedTasks = [task.cget('text') for task in self.routineTasksFrame.winfo_children()]
+        if taskName in loadedTasks:
+            self.addTaskButton.config(state = "disabled")
+        elif taskName not in loadedTasks:
+            self.addTaskButton.config(state = "enabled")
     def addTaskToRoutineGUI(self):
         '''
             Adds task labels into the rouineTasksFrame
         '''
         taskName = self.addTaskBox.get()
-        
-        # Ensure task is unique inside loading frame
-        loadedTasks = [task.cget('text') for task in self.routineTasksFrame.winfo_children()]
-        if taskName in loadedTasks:
-            mBox.showerror(title = "Task Additon Error", message= "Please select a task that has not been added to the routine list")
-            return 
-
         ttk.Label(self.routineTasksFrame, text = taskName).grid(row = len(self.routineTasksFrame.winfo_children()), column = 0, sticky = W)
+        self.addTaskButton.config(state = "disabled")
     def updateRoutineAddGUI(self, event):
         '''
             Updates widget text in newRoutineWindow to match entered routine name
@@ -138,6 +143,7 @@ class RoutineFunctions():
             Form which allows routine properties to change, as well as to add/remove tasks that are associated with a particular routine
         '''
         userRoutines = self.mTask.loadUserRoutines()
+        userRoutines.remove("Tasks") # Disable editing for default task-routine relation
 
         # Form Window ------------------------------------------------------
         self.window = Toplevel(self.mTask.root)
@@ -163,11 +169,11 @@ class RoutineFunctions():
         ttk.Label(self.container, text = "Select a Task Name to Remove").grid(row = 4, column = 1, padx = 10, pady = 10)
 
         self.taskToAdd = ttk.Combobox(self.container, state = "readonly")
-        self.taskToAdd.bind("<<ComboboxSelected>>",lambda e: self.container.focus())
+        self.taskToAdd.bind("<<ComboboxSelected>>", self.function1)
         self.taskToAdd.grid(row = 5 , column = 0, padx = 10)
 
         self.taskToRemove = ttk.Combobox(self.container, state = "readonly")
-        self.taskToRemove.bind("<<ComboboxSelected>>",lambda e: self.container.focus())
+        self.taskToRemove.bind("<<ComboboxSelected>>", self.function2)
         self.taskToRemove.grid(row = 5 , column = 1, padx = 10)
 
         self.taskToAddFrame = ttk.LabelFrame(self.container, text = " Tasks to Add ")
@@ -193,6 +199,28 @@ class RoutineFunctions():
         self.submitButton = ttk.Button(self.container, text = "Edit", command = self.submitEditRoutine)
         self.submitButton.grid(row = 11, column = 0, columnspan = 2, pady = 20)
         # ~ Form Window ------------------------------------------------------
+    def function1(self, event):
+        '''
+            Keep watch on the frame container and the button beneath this combobox
+        '''
+        self.container.focus()
+        taskName = self.taskToAdd.get()
+        loadedAddTasks = [task.cget('text') for task in self.taskToAddFrame.winfo_children()]
+        if taskName in loadedAddTasks:
+            self.submitTaskToAdd.config(state = "disable")
+        if taskName not in loadedAddTasks:
+            self.submitTaskToAdd.config(state = "enabled")
+    def function2(self, event):
+        '''
+            Keep watch on the frame container and the button beneath this combobox
+        '''
+        self.container.focus()
+        taskName = self.taskToRemove.get()
+        loadedAddTasks = [task.cget('text') for task in self.taskToRemoveFrame.winfo_children()]
+        if taskName in loadedAddTasks:
+            self.submitTaskToRemove.config(state = "disable")
+        if taskName not in loadedAddTasks:
+            self.submitTaskToRemove.config(state = "enabled")
     def fillEntries(self, event):
         '''
             Fills routine edit form widgets with proper values based on the selected routine
@@ -232,25 +260,26 @@ class RoutineFunctions():
         '''
         taskName = self.taskToRemove.get()
 
-        loadedRemoveTasks = [task.cget('text') for task in self.taskToRemoveFrame.winfo_children()]
-        if taskName in loadedRemoveTasks:
-            mBox.showerror(title = "Task Addition Error", message= "Please choose a task that is not in the list")
-            return  
+        if not taskName:
+            return
 
         ttk.Label(self.taskToRemoveFrame, text = taskName).grid(row = len(self.taskToRemoveFrame.winfo_children()), column = 0, sticky = W)
+
+        self.submitTaskToRemove.config(state = "disable")
 
     def addTaskToAddFrame(self):
         '''
             Adds the selected task from the task combobox to a labelframe, which specifies the tasks to add from currently selected routine
         '''
         taskName = self.taskToAdd.get()
-
-        loadedAddTasks = [task.cget('text') for task in self.taskToAddFrame.winfo_children()]
-        if taskName in loadedAddTasks:
-            mBox.showerror(title = "Task Addition Error", message= "Please choose a task that is not in the list")
-            return 
+        
+        if not taskName:
+            return
 
         ttk.Label(self.taskToAddFrame, text = taskName).grid(row = len(self.taskToAddFrame.winfo_children()), column = 0, sticky = W)
+        
+        self.submitTaskToAdd.config(state = "disable")
+        
     def clearEditRoutine(self):
         '''
             Removes all tasks from the add to and remove from task frames inside of the edit routine form
@@ -260,6 +289,9 @@ class RoutineFunctions():
 
         for child in self.taskToRemoveFrame.winfo_children():
             child.destroy()
+
+        self.submitTaskToRemove.config(state = "enabled")
+        self.submitTaskToAdd.config(staet = "enabled")
     def submitEditRoutine(self):
         '''
             Evalutates the edited data and submits the data to the database. Routine is NOT updated in the GUI after this change
