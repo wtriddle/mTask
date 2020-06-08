@@ -281,22 +281,22 @@ class TaskFunctions():
         self.taskEntry.grid(row = 1, column = 0, padx = 10, pady = 10)
 
         # Selectable frequency of recurance list creation
-        self.reccuringDays = [("Every " + str(x) + " days ") for x in range(2,7)]
-        self.reccuringDays.insert(0, "Every other day")
-        self.reccuringDays.insert(0, "Daily")
+        self.recurFrequencies = [("Every " + str(x) + " days ") for x in range(2,7)]
+        self.recurFrequencies.insert(0, "Every other day")
+        self.recurFrequencies.insert(0, "Daily")
 
         # Frequency of recurance selection area
         ttk.Label(self.container, text = "This task shall occur: ").grid(row = 2, column = 0, padx = 10, pady = 10)
-        self.daysEntry = ttk.Combobox(self.container, values = self.reccuringDays)
+        self.daysEntry = ttk.Combobox(self.container, values = self.recurFrequencies)
         self.daysEntry.bind("<<ComboboxSelected>>", lambda e: self.container.focus()) # Remove blue background for comobox when selected
         self.daysEntry.grid(row = 3, column = 0, padx = 10, pady = 10)
 
         # Submission of recurrance action
-        self.createButton = ttk.Button(self.container, text = "Create Reccurance", command = self.createReccuringTask, state = "disabled")
+        self.createButton = ttk.Button(self.container, text = "Create Recurrance", command = self.createRecurringTask, state = "disabled")
         self.createButton.grid(row = 4, column = 0, padx = 10, pady = 10)
 
         # Removal of exsisting recurance action
-        self.removeButton = ttk.Button(self.container, text = "Remove reccurance", command = self.removeReccurance, state = "disabled")
+        self.removeButton = ttk.Button(self.container, text = "Remove Recurrance", command = self.removeRecurrance, state = "disabled")
         self.removeButton.grid(row = 5, column = 0, padx = 10, pady = 10)
         # ~ Form Window -----------------------------------------------
     def refreshConfigRecurrence(self, event):
@@ -304,7 +304,7 @@ class TaskFunctions():
             Refreshes the configure recurrence form window based on the task data from the database
         '''
         taskName = self.taskEntry.get()
-        self.container.focus()
+        self.container.focus() # Remove blue background for comobox when selected
 
         query = f'SELECT * FROM Tasks WHERE taskName = \"{taskName}\" AND routineName = \"Tasks\"'
         rec = dict(self.mTask.mTaskDB.sql_query_row(query))
@@ -320,18 +320,18 @@ class TaskFunctions():
 
         # If the recurance property is set in the database, then display the current value and allow removal of the action
         if recurFrequency:
-            self.daysEntry.current(self.reccuringDays.index(recurFrequency))
-            self.createButton.config(text = "Alter Reccurance")
+            self.daysEntry.current(self.recurFrequencies.index(recurFrequency))
+            self.createButton.config(text = "Alter Recurrance")
             self.removeButton.config(state = "enabled")
         # If the recurance property is not set, only allow its creation action and populate the comobox with an inital "daily" option
         else:
             self.daysEntry.current(0)
-            self.createButton.config(text = "Create Reccurance")
+            self.createButton.config(text = "Create Recurrance")
             self.removeButton.config(state = "disabled")
         
         # Allow user to create/alter task recurance
         self.createButton.config(state = "enabled")
-    def createReccuringTask(self):
+    def createRecurringTask(self):
         '''
             Creates or Alters the recurrance frequency of a task
             Whether altered or created, the reference date is then set to today's date
@@ -353,11 +353,11 @@ class TaskFunctions():
         self.mTask.mTaskDB.sql_do(query)
 
         # Show success message based on action
-        if self.createButton.cget("text") == "Create Reccurance":
-            mBox.showinfo(title = "Creation Success!", message= "You have created a task reccurance")
-        elif self.createButton.cget("text") == "Alter Reccurance":
-            mBox.showinfo(title = "Alter Success!", message= "You have altered a task reccurance")
-    def removeReccurance(self):
+        if self.createButton.cget("text") == "Create Recurrance":
+            mBox.showinfo(title = "Creation Success!", message= "You have created a task recurrance")
+        elif self.createButton.cget("text") == "Alter Recurrance":
+            mBox.showinfo(title = "Alter Success!", message= "You have altered a task recurrance")
+    def removeRecurrance(self):
         '''
             Deactivates the recurance property of a task by setting both related values in the database to NULL
             Remvoval is only for tasks which have been previously configured to recur

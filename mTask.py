@@ -302,11 +302,21 @@ class mTask():
         '''
             Load a routine directly into the GUI with its tasks into a new tab, where only the routineName is required
         '''
+        # If the routine to be loaded is already in the GUI, destroy its current tab then re-introduce it as a newly loaded routine
+        for i, tab in enumerate(self.tabControl.winfo_children()):
+            tabTitle = str(self.tabControl.tab(i, option = "text"))
+            if tabTitle == routineName:
+                tab.destroy()
+                break
+
+        # Retrieve all routine specific tasks from database in a GUI acceptable form
         routineTasks = []
         query = f'SELECT * FROM Tasks WHERE routineName = \"{routineName}\"'
         tasks = list(self.mTaskDB.sql_query(query))
         for task in tasks:
             routineTasks.append({'taskName': task['taskName'], 'taskTime' : task['taskTime'], 'routineName' : routineName})
+        
+        # Add the routine to the GUI
         self.addRoutineToGUI(routineName=routineName, tasks=routineTasks)
 
     def initTabs(self):
@@ -371,6 +381,9 @@ class mTask():
 
         return loadedToday
     
+# ==================
+# Creation of GUI
+# ==================
 
 # mTask object
 mtask = mTask()
