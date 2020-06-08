@@ -3,3 +3,4 @@ __pycache__
 mTaskDB.db
 bWDB.py
 testing.py
+.vscode
