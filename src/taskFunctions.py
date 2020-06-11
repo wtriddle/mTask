@@ -77,7 +77,11 @@ class TaskFunctions():
         query = f'INSERT INTO Tasks (taskName, taskTime, taskDescription) VALUES (\"{taskName}\",\"{taskTime}\", \"{taskDescription}\")' 
         self.mTask.mTaskDB.sql_do(query)
         
-        self.mTask.addTaskToGUI(**{'taskName': taskName, 'taskTime' : taskTime, 'routineName' : "Tasks"})
+        self.mTask.addTaskToGUI(**{
+            'taskName': taskName, 
+            'taskTime' : taskTime,
+            'taskDescription' : taskDescription, 
+            'routineName' : "Tasks"})
         
 
     def loadTask(self):
@@ -85,7 +89,7 @@ class TaskFunctions():
             Pop-up form for loading a task into a specific routine tab currently in the GUI.
         '''
         userTasks = self.mTask.loadUserTasks()
-        userRoutines = [str(self.mTask.tabControl.tab(i, option = "text")) for i in range(len(self.mTask.tabControl.winfo_children()))]
+        userRoutines = [str(self.mTask.nb.tab(i, option = "text")) for i in range(len(self.mTask.nb.winfo_children()))]
 
         # Form Window ------------------------------------------------------
         
@@ -147,7 +151,12 @@ class TaskFunctions():
 
         rec = dict(rec)
         taskTime = rec['taskTime']
-        self.mTask.addTaskToGUI(**{'taskName': taskName, 'taskTime' : taskTime, 'routineName' : routineName})
+        taskDescription = rec['taskDescription']
+        self.mTask.addTaskToGUI(**{
+            'taskName': taskName, 
+            'taskTime' : taskTime,
+            'taskDescription' : taskDescription, 
+            'routineName' : routineName})
 
 
     def editTask(self):

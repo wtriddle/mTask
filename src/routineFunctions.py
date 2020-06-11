@@ -121,10 +121,14 @@ class RoutineFunctions():
             self.mTask.mTaskDB.sql_do(query)
 
             # Create accetpable GUI task dictionary
-            tasksForGUI.append({'taskName': taskName, 'taskTime' : taskTime, 'routineName' : routineName})
+            tasksForGUI.append({
+                'taskName': taskName, 
+                'taskTime' : taskTime,
+                'taskDescription' : taskDescription,  
+                'routineName' : routineName})
 
         # Add new routine to GUI with its tasks
-        self.mTask.addRoutineToGUI(tasks = tasksForGUI, routineName=routineName)
+        self.mTask.addRoutineToGUI(tasks=tasksForGUI, routineName=routineName)
 
     def loadRoutine(self):
         '''
