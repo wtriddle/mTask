@@ -12,15 +12,20 @@ from threading import Thread
 from queue import Queue
 import time
 import datetime
+import re
 
 class mTask():
-    """
-        Central class for GUI layout, updates, and initalizations.
-        Includes common database functionality
+    """Central class for top level TK instances and common GUI interface loading for mTask
+
+    Attributes:
+        root : Top level Tk window
+        mTaskDB : Database instance
+        nb : Top level notebook
+        s : Top level style
     """
 
     def __init__(self):
-        """GUI init"""
+        """Database, Menu, Notebook, and Style init"""
         
         # Root, Database, and Menu Init ----------------------------------------------------------
         self.root = Tk()                                    # Top level window
@@ -64,10 +69,17 @@ class mTask():
         # ~ Styles -------------------------------------------------------------------------------------------
 
     def addTaskToGUI(self, taskName, taskTime, taskDescription, routineName):
-        """Appends three task widgets to a specific routine tab and increases the maximum of the routine progress bar by 1
+        """Append three task widgets to a specific routine tab and increases the maximum of the routine progress bar by 1.
 
-            An exception is raised for a non-exsistent routine tab
-            An error is raised for an already loaded task     
+            Args:
+                taskName (str) : Name of the task
+                taskTime (str) : Start time of the task
+                taskDescription (str) : Description of the task
+                routineName (str) : Name of the routine tab to add the task information to
+
+            Exceptions:
+                A non-exsistent routine tab name is entered as an arg
+                The task is already loaded into the routine tab   
         """
 
         # Locate tab for task appension
@@ -80,7 +92,7 @@ class mTask():
         pFrame = tab.winfo_children()[2] # Progress bar frame
         pBar = pFrame.winfo_children()[0] # Progress bar
 
-        # Present an Error if task is already inside of tab
+        # Loaded task exception
         loadedTasks = [child.cget("text") for child in tdFrame.winfo_children()]
         if taskName in loadedTasks:
             mBox.showerror(title="Task Insertion Error", 
@@ -95,10 +107,10 @@ class mTask():
         b.grid(row = numTasks, column = 0 , padx = 15, pady = 15)
         b.bind("<Button-1>", self.completionOfTask) 
 
-        # Task Time
+        # Task Time widget
         ttk.Label(tdFrame, text = str(taskTime)).grid(row = numTasks, column = 1 , padx = 15, pady = 15)
 
-        # Task Name
+        # Task Name widget
         tLabel = ttk.Label(tdFrame, text = str(taskName))
         tLabel.grid(row = numTasks, column = 2 , padx = 15, pady = 15)
         
@@ -109,25 +121,26 @@ class mTask():
         # Set the focus to the tab where the task was added to
         self.nb.select(tab)
 
-        # Add descriptor to label.
+        # Add descriptor to label
         descriptor.createDescriptor(tLabel, taskDescription)
 
     def addRoutineToGUI(self, tasks = [], *, routineName = ""):
-        """Adds a routine tab to the GUI with full task listings and progress bar functionality
+        """Add a routine tab to the GUI with full task listings and progress bar functionality.
         
-            Keyword Arguments:
-            routineName -- The name of the new tab
-            tasks -- List of task dictionaries, whose keys are {taskName, taskTime, routineName}
+            Keyword Args:
+                routineName (str) : The name of the new tab
+                tasks (list) : List of task dictionaries, whose keys are {taskName, taskTime, routineName}
 
-            Exception is raised if there is not a unanimous routineName shared among all dictionaries in the tasks list
+            Exceptions:
+                Non-unanimous routineName in tasks arg
         """
 
-        r = ttk.Frame(self.nb)
-        self.nb.add(r, text = routineName)
+        tab = ttk.Frame(self.nb)
+        self.nb.add(tab, text = routineName)
 
-        tdFrame = ttk.LabelFrame(r, text = " Incomplete Tasks ")
-        ctFrame = ttk.LabelFrame(r, text = " Completed Tasks ") 
-        pFrame = ttk.LabelFrame(r, text = " Progress ")
+        tdFrame = ttk.LabelFrame(tab, text = " Incomplete Tasks ")
+        ctFrame = ttk.LabelFrame(tab, text = " Completed Tasks ") 
+        pFrame = ttk.LabelFrame(tab, text = " Progress ")
         pBar = ttk.Progressbar(pFrame, mode = "determinate", maximum = 0.0)
 
         tdFrame.pack(fill = "both", expand = True, padx = 10, pady = 10)
@@ -155,10 +168,14 @@ class mTask():
         ttk.Label(ctFrame, text = "Completed Tasks").grid(row = 0, column = 0 , padx = 15, pady = 15)
         ttk.Label(ctFrame, text = "Completion Time").grid(row = 0, column = 1 , padx = 15, pady = 15)
 
-        self.nb.select(r)
+        self.nb.select(tab)
  
     def completionOfTask(self, event):
-        """Removes the completed task row, increments the progress bar and updates the competed task frame with a time stamp"""
+        """Remove the completed task row, increment the progress bar and update the competed task frame with a time stamp of completion.
+        
+            Args:
+                event (Tk instance)
+        """
 
         # Widgets 
         b = event.widget
@@ -170,7 +187,7 @@ class mTask():
 
         # Update the in-completed task frame
         ctRow = b.grid_info()['row'] # Completed task row
-        taskName = str(b.cget('text')[9:len(b.cget('text'))]) # Remove the string "completed " from button text
+        taskName = re.search("(?<=Complete ).+", b.cget("text")).group() # Text after "Complete " is task name from button
         
         for task in tdFrame.winfo_children():
             row = task.grid_info()['row']
@@ -191,14 +208,11 @@ class mTask():
         ttk.Label(ctFrame, text = t).grid(row = numCTs, column = 1, padx = 15, pady = 15)
 
         # Update the progress bar in a new thread
-        runT = Thread(target = lambda : self.updateProgressBar(pBar), daemon= True)
+        runT = Thread(target = lambda : self.updateProgressBar(pBar), daemon=True)
         runT.start()
 
     def updateProgressBar(self, pBar):
-        """Threaded loop to make progress bar smoothly fill, for about 1 second
-        
-            Shows message if routine reaches completion
-        """
+        """Threaded loop to make progress bar smoothly fill, for about 1 second."""
 
         i = 0 
         while i <= 100:
@@ -210,7 +224,7 @@ class mTask():
             i+=1
 
     def initDB(self):
-        """Initalizes the mTaskDB object and creates the Tasks and Routines tables if they do not exist"""
+        """Initalize the mTaskDB object and creates the Tasks and Routines tables if they do not exist."""
 
         self.mTaskDB = bwDB(filename = "mTaskDB.db")
 
@@ -241,7 +255,7 @@ class mTask():
             self.mTaskDB.sql_do(query)
 
     def initMenu(self, tFuncs, rFuncs, hFuncs):
-        """Initializes the menu of mTask with corresponding functionality"""
+        """Initialize the menu of mTask with corresponding functionality."""
 
         menuBar = Menu(self.root) 
         self.root.config(menu = menuBar)
@@ -271,11 +285,12 @@ class mTask():
         menuBar.add_cascade(menu = hMenu, label = "Help")
 
     def loadUserTasks(self, routineName = "All"):
-        """Returns a list of task name strings from mTaskDB
+        """Return a list of task name strings from mTaskDB.
             
-            Keyword argument:
-            routineName -- Which routine to load the tasks from (default "All")
-            Exception raised for non-exsisting routineName in the database
+            Keyword Args:
+                routineName (str) : Which routine to load the tasks from (default "All")
+            Exceptions:
+                Non-exsisting routineName in the database
         """
 
         self.mTaskDB.set_table(tablename = "Tasks")
@@ -298,7 +313,7 @@ class mTask():
         return userTasks
     
     def loadUserRoutines(self):
-        """Returns a list of all user routines inside of the Routines table from mTaskDB"""
+        """Return a list of all user routines inside of the Routines table from mTaskDB."""
 
         self.mTaskDB.set_table(tablename = "Routines")
         recs = list(self.mTaskDB.getrecs())
@@ -306,13 +321,17 @@ class mTask():
         if not recs:
             return []        
 
-        # routineName is PK in DB, already unique
+        # routineName is the PK in Routines table, already unique
         userRoutines = [rec['routineName'] for rec in recs] 
 
         return userRoutines
     
     def loadSpecificRoutine(self, routineName):
-        """Load a routine directly into the GUI with its tasks into a new tab, where only the routineName is required"""
+        """Load a routine directly into the GUI with its tasks into a new tab.
+        
+            Args:
+                routineName (str) :  Name of the routine to load
+        """
 
         # Destroy the routine tab if it is already loaded
         tab = self.getRoutineTab(routineName)
@@ -334,7 +353,11 @@ class mTask():
         self.addRoutineToGUI(routineName=routineName, tasks=routineTasks)
 
     def getRoutineTab(self, routineName):
-        """Returns the tab widget for a specific routine. Returns False if the tab does not exist or is not loaded"""
+        """Return the tab widget for a specific routine. Return False if the tab does not exist or is not loaded.
+                
+            Args:
+                routineName (str) :  Name of the routine tab 
+        """
 
         for i, tab in enumerate(self.nb.winfo_children()):
             tabTitle = str(self.nb.tab(i, option = "text"))
@@ -344,9 +367,9 @@ class mTask():
             return False
 
     def initTabs(self):
-        """Initalizes the tabs based on recurrant properties of tasks and routines set by the user"""
+        """Initalize the tabs based on recurrant properties of tasks and routines set by the user."""
 
-        # Tasks Tab Init ---------------------------------------------
+        # Tasks Tab Init ----------------------------------------------------------------
         self.mTaskDB.set_table("Tasks")
         recs = self.mTaskDB.getrecs()
 
@@ -354,7 +377,7 @@ class mTask():
         recurringTasks = [rec for rec in recs if rec['recurRefDate']]
         
         if recurringTasks:
-            todaysTasks = self.recurantAlgorithm(recurringTasks) # Determine what tasks should be auto-loaded
+            todaysTasks = self.recurantAlg(recurringTasks) # Determine what tasks should be auto-loaded
             tasksToAdd = []
             for task in todaysTasks:
                 tasksToAdd.append({
@@ -365,26 +388,29 @@ class mTask():
             self.addRoutineToGUI(routineName= "Tasks", tasks=tasksToAdd)
         else:
             self.addRoutineToGUI(routineName= "Tasks")
-        # ~ Tasks Tab Init ---------------------------------------------
+        # ~ Tasks Tab Init ----------------------------------------------------------------
 
-        # Routine Tab Init --------------------------------------------
-        recurringRoutines = [] # Loads routines with a recuring property
+
+        # Routine Tabs Init ---------------------------------------------------------------
         self.mTaskDB.set_table("Routines")
         recs = self.mTaskDB.getrecs()
-        for rec in recs:
-            if rec['recurRefDate']:
-                recurringRoutines.append(rec)
+
+        # Loads routines with a recuring property
+        recurringRoutines = [rec for rec in recs if rec['recurRefDate']]
         
         if recurringRoutines:
-            todaysRoutines = self.recurantAlgorithm(recurringRoutines) # Determine what routines should be auto loaded
+            todaysRoutines = self.recurantAlg(recurringRoutines) # Determine what routines should be auto loaded
             for routine in todaysRoutines:
                 self.loadSpecificRoutine(routineName=routine['routineName'])
-        # ~ Routine Tab Init ------------------------------------------
-    def recurantAlgorithm(self, recurList):
+        # ~ Routine Tabs Init -------------------------------------------------------------
+
+    def recurantAlg(self, recurList):
+        """Determine what routines or tasks should be automatically loaded into the GUI based on the recurring property configuration.
+        
+            Args:
+                recurList (list) : List of database records which have a recurFrequency/Date
         """
-            Determines what routines or tasks should be automatically loaded into the GUI based on the recurring property configuration
-            Works for both routines and tasks
-        """
+
         loadedToday = [] 
         today = datetime.datetime.today().date() # In the form YYYY-MM-DD
 
@@ -395,9 +421,9 @@ class mTask():
             frequency = int(rec['recurFrequency']) # A number 1-7
             refDate = rec['recurRefDate'].split("-") # A date in a YYYY-MM-DD form
 
-            # Create create reference date as a datetime object 
+            # Create reference date as a datetime object 
             refInfo = {
-                'year':int(refDate[0]), 
+                'year' : int(refDate[0]), 
                 'month' : int(refDate[1]), 
                 'day' : int(refDate[2])}
             refDate = datetime.date(**refInfo)
